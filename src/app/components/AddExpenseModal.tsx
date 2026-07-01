@@ -12,9 +12,23 @@ interface Props {
   editExpense?: Expense | null;
 }
 
-const CATEGORIES: Category[] = ["food", "transport", "accommodation", "entertainment", "shopping", "utilities", "other"];
+const CATEGORIES: Category[] = [
+  "food",
+  "transport",
+  "accommodation",
+  "entertainment",
+  "shopping",
+  "utilities",
+  "other",
+];
 
-export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Props) {
+export function AddExpenseModal({
+  group,
+  open,
+  onClose,
+  onAdd,
+  editExpense,
+}: Props) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [paidBy, setPaidBy] = useState(group.members[0]?.id ?? "");
@@ -50,10 +64,23 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
   }, [open, editExpense, group.members]);
 
   const totalAmount = parseFloat(amount) || 0;
-  const equalShare = group.members.length > 0 ? totalAmount / group.members.length : 0;
+  const equalShare =
+    group.members.length > 0 ? totalAmount / group.members.length : 0;
 
-  const customTotal = Object.values(customSplits).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+  const customTotal = Object.values(customSplits).reduce(
+    (s, v) => s + (parseFloat(v) || 0),
+    0,
+  );
   const customDiff = Math.abs(customTotal - totalAmount);
+
+  const CURRENCY_SYMBOLS: Record<string, string> = {
+    PHP: "₱",
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+  };
+
+  const currencySymbol = CURRENCY_SYMBOLS[group.currency] ?? group.currency;
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
@@ -61,7 +88,8 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
     if (!totalAmount || totalAmount <= 0) errs.amount = "Enter a valid amount";
     if (!paidBy) errs.paidBy = "Select who paid";
     if (splitType === "custom") {
-      if (customDiff > 0.01) errs.splits = `Splits must equal total (diff: $${customDiff.toFixed(2)})`;
+      if (customDiff > 0.01)
+        errs.splits = `Splits must equal total (diff: $${customDiff.toFixed(2)})`;
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -73,7 +101,16 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
       splitType === "equal"
         ? group.members.map((m, i) => ({
             memberId: m.id,
-            amount: i < group.members.length - 1 ? Math.floor((totalAmount / group.members.length) * 100) / 100 : Math.round((totalAmount - Math.floor((totalAmount / group.members.length) * 100) / 100 * (group.members.length - 1)) * 100) / 100,
+            amount:
+              i < group.members.length - 1
+                ? Math.floor((totalAmount / group.members.length) * 100) / 100
+                : Math.round(
+                    (totalAmount -
+                      (Math.floor((totalAmount / group.members.length) * 100) /
+                        100) *
+                        (group.members.length - 1)) *
+                      100,
+                  ) / 100,
           }))
         : group.members.map((m) => ({
             memberId: m.id,
@@ -110,7 +147,10 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
             <Dialog.Title className="text-lg font-semibold text-foreground">
               {editExpense ? "Edit Expense" : "Add Expense"}
             </Dialog.Title>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors">
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full hover:bg-muted transition-colors"
+            >
               <X size={18} className="text-muted-foreground" />
             </button>
           </div>
@@ -118,7 +158,9 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
           <div className="p-5 space-y-5 pb-10">
             {/* Description */}
             <div>
-              <label className="block text-sm text-muted-foreground mb-1.5">Description</label>
+              <label className="block text-sm text-muted-foreground mb-1.5">
+                Description
+              </label>
               <input
                 type="text"
                 placeholder="e.g. Dinner at the beach"
@@ -126,14 +168,23 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-input-background border border-border text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
               />
-              {errors.description && <p className="text-destructive text-xs mt-1">{errors.description}</p>}
+              {errors.description && (
+                <p className="text-destructive text-xs mt-1">
+                  {errors.description}
+                </p>
+              )}
             </div>
 
             {/* Amount */}
             <div>
-              <label className="block text-sm text-muted-foreground mb-1.5">Amount ({group.currency})</label>
+              <label className="block text-sm text-muted-foreground mb-1.5">
+                Amount ({group.currency})
+              </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                // TODO: Add currency symbol based on group.currency
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  {currencySymbol}
+                </span>
                 <input
                   type="number"
                   min="0"
@@ -144,12 +195,16 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
                   className="w-full pl-8 pr-4 py-3 rounded-xl bg-input-background border border-border text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
-              {errors.amount && <p className="text-destructive text-xs mt-1">{errors.amount}</p>}
+              {errors.amount && (
+                <p className="text-destructive text-xs mt-1">{errors.amount}</p>
+              )}
             </div>
 
             {/* Date */}
             <div>
-              <label className="block text-sm text-muted-foreground mb-1.5">Date</label>
+              <label className="block text-sm text-muted-foreground mb-1.5">
+                Date
+              </label>
               <input
                 type="date"
                 value={date}
@@ -160,7 +215,9 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
 
             {/* Category */}
             <div>
-              <label className="block text-sm text-muted-foreground mb-1.5">Category</label>
+              <label className="block text-sm text-muted-foreground mb-1.5">
+                Category
+              </label>
               <div className="grid grid-cols-4 gap-2">
                 {CATEGORIES.map((cat) => (
                   <button
@@ -181,7 +238,9 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
 
             {/* Paid By */}
             <div>
-              <label className="block text-sm text-muted-foreground mb-1.5">Paid by</label>
+              <label className="block text-sm text-muted-foreground mb-1.5">
+                Paid by
+              </label>
               <div className="relative">
                 <select
                   value={paidBy}
@@ -189,17 +248,26 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
                   className="w-full px-4 py-3 rounded-xl bg-input-background border border-border text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
                 >
                   {group.members.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
                   ))}
                 </select>
-                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <ChevronDown
+                  size={16}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                />
               </div>
-              {errors.paidBy && <p className="text-destructive text-xs mt-1">{errors.paidBy}</p>}
+              {errors.paidBy && (
+                <p className="text-destructive text-xs mt-1">{errors.paidBy}</p>
+              )}
             </div>
 
             {/* Split type */}
             <div>
-              <label className="block text-sm text-muted-foreground mb-1.5">Split</label>
+              <label className="block text-sm text-muted-foreground mb-1.5">
+                Split
+              </label>
               <div className="flex gap-2 p-1 bg-muted rounded-xl">
                 {(["equal", "custom"] as SplitType[]).map((type) => (
                   <button
@@ -221,15 +289,24 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
             {splitType === "equal" ? (
               <div className="space-y-2">
                 {group.members.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between px-4 py-3 rounded-xl bg-accent">
+                  <div
+                    key={m.id}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl bg-accent"
+                  >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm text-white font-medium" style={{ backgroundColor: m.color }}>
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-sm text-white font-medium"
+                        style={{ backgroundColor: m.color }}
+                      >
                         {m.name[0].toUpperCase()}
                       </div>
                       <span className="text-sm text-foreground">{m.name}</span>
                     </div>
                     <span className="text-sm font-medium text-accent-foreground">
-                      ${totalAmount ? (totalAmount / group.members.length).toFixed(2) : "0.00"}
+                      $
+                      {totalAmount
+                        ? (totalAmount / group.members.length).toFixed(2)
+                        : "0.00"}
                     </span>
                   </div>
                 ))}
@@ -237,36 +314,59 @@ export function AddExpenseModal({ group, open, onClose, onAdd, editExpense }: Pr
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Assign amounts per person</span>
-                  <button onClick={distributeEqually} className="text-xs text-primary font-medium">
+                  <span className="text-sm text-muted-foreground">
+                    Assign amounts per person
+                  </span>
+                  <button
+                    onClick={distributeEqually}
+                    className="text-xs text-primary font-medium"
+                  >
                     Distribute equally
                   </button>
                 </div>
                 {group.members.map((m) => (
                   <div key={m.id} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm text-white font-medium shrink-0" style={{ backgroundColor: m.color }}>
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm text-white font-medium shrink-0"
+                      style={{ backgroundColor: m.color }}
+                    >
                       {m.name[0].toUpperCase()}
                     </div>
-                    <span className="text-sm text-foreground w-24 shrink-0">{m.name}</span>
+                    <span className="text-sm text-foreground w-24 shrink-0">
+                      {m.name}
+                    </span>
                     <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        $
+                      </span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         value={customSplits[m.id] ?? ""}
-                        onChange={(e) => setCustomSplits((prev) => ({ ...prev, [m.id]: e.target.value }))}
+                        onChange={(e) =>
+                          setCustomSplits((prev) => ({
+                            ...prev,
+                            [m.id]: e.target.value,
+                          }))
+                        }
                         className="w-full pl-7 pr-3 py-2.5 rounded-xl bg-input-background border border-border text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm"
                         placeholder="0.00"
                       />
                     </div>
                   </div>
                 ))}
-                <div className={`flex justify-between text-sm pt-1 ${customDiff > 0.01 ? "text-destructive" : "text-muted-foreground"}`}>
+                <div
+                  className={`flex justify-between text-sm pt-1 ${customDiff > 0.01 ? "text-destructive" : "text-muted-foreground"}`}
+                >
                   <span>Total assigned</span>
-                  <span>${customTotal.toFixed(2)} / ${totalAmount.toFixed(2)}</span>
+                  <span>
+                    ${customTotal.toFixed(2)} / ${totalAmount.toFixed(2)}
+                  </span>
                 </div>
-                {errors.splits && <p className="text-destructive text-xs">{errors.splits}</p>}
+                {errors.splits && (
+                  <p className="text-destructive text-xs">{errors.splits}</p>
+                )}
               </div>
             )}
 
