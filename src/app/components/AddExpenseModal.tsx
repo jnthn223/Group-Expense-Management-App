@@ -237,31 +237,57 @@ export function AddExpenseModal({
             </div>
 
             {/* Paid By */}
-            <div>
-              <label className="block text-sm text-muted-foreground mb-1.5">
-                Paid by
-              </label>
-              <div className="relative">
-                <select
-                  value={paidBy}
-                  onChange={(e) => setPaidBy(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-input-background border border-border text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
-                >
-                  {group.members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={16}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                />
+            {group.members.length === 1 ? (
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1.5">
+                  Paid by
+                </label>
+
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-muted/30">
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm text-white font-medium"
+                    style={{ backgroundColor: group.members[0].color }}
+                  >
+                    {group.members[0].name[0].toUpperCase()}
+                  </div>
+
+                  <span className="font-medium text-foreground">
+                    {group.members[0].name}
+                  </span>
+                </div>
               </div>
-              {errors.paidBy && (
-                <p className="text-destructive text-xs mt-1">{errors.paidBy}</p>
-              )}
-            </div>
+            ) : (
+              <div>
+                <label className="block text-sm text-muted-foreground mb-1.5">
+                  Paid by
+                </label>
+
+                <div className="relative">
+                  <select
+                    value={paidBy}
+                    onChange={(e) => setPaidBy(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-input-background border border-border text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
+                  >
+                    {group.members.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <ChevronDown
+                    size={16}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                  />
+                </div>
+
+                {errors.paidBy && (
+                  <p className="text-destructive text-xs mt-1">
+                    {errors.paidBy}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Split type */}
             <div>
