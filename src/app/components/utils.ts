@@ -18,6 +18,22 @@ export function formatCurrency(amount: number, currency = "USD"): string {
   }).format(amount);
 }
 
+export function getCurrencySymbol(currency = "USD"): string {
+  try {
+    const parts = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).formatToParts(0);
+
+    return parts.find((part) => part.type === "currency")?.value ?? currency;
+  } catch {
+    return currency;
+  }
+}
+
 export function computeBalances(group: Group): Balance[] {
   const balances: Record<string, number> = {};
   group.members.forEach((m) => (balances[m.id] = 0));

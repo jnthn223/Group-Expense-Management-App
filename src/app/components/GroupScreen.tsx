@@ -59,6 +59,8 @@ export function GroupScreen({
   const currentMember = group.members.find(
     (m) => m.id === currentUser.id || m.uid === currentUser.id,
   );
+  const displayMemberName = (memberId: string, fallback?: string) =>
+    memberId === currentMember?.id ? "You" : (fallback ?? "Unknown");
 
   const paymentItems = group.expenses.flatMap((expense) =>
     expense.splits
@@ -277,7 +279,7 @@ export function GroupScreen({
                                 className="font-medium"
                                 style={{ color: payer?.color }}
                               >
-                                {payer?.name ?? "Unknown"}
+                                {displayMemberName(exp.paidBy, payer?.name)}
                               </span>{" "}
                               ·{" "}
                               {exp.splitType === "equal"
@@ -347,7 +349,7 @@ export function GroupScreen({
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-foreground">
-                        {b.memberName}
+                        {displayMemberName(b.memberId, b.memberName)}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {Math.abs(b.net) < 0.01
@@ -426,14 +428,20 @@ export function GroupScreen({
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-foreground">
                                 <span style={{ color: fromMember?.color }}>
-                                  {fromMember?.name ?? "Unknown"}
+                                  {displayMemberName(
+                                    split.memberId,
+                                    fromMember?.name,
+                                  )}
                                 </span>
                                 <span className="text-muted-foreground">
                                   {" "}
                                   pays{" "}
                                 </span>
                                 <span style={{ color: toMember?.color }}>
-                                  {toMember?.name ?? "Unknown"}
+                                  {displayMemberName(
+                                    expense.paidBy,
+                                    toMember?.name,
+                                  )}
                                 </span>
                               </p>
                               <p className="text-xs text-muted-foreground mt-0.5 truncate">
@@ -544,14 +552,14 @@ export function GroupScreen({
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-foreground">
                                 <span style={{ color: fromMember?.color }}>
-                                  {s.fromName}
+                                  {displayMemberName(s.from, s.fromName)}
                                 </span>
                                 <span className="text-muted-foreground">
                                   {" "}
                                   pays{" "}
                                 </span>
                                 <span style={{ color: toMember?.color }}>
-                                  {s.toName}
+                                  {displayMemberName(s.to, s.toName)}
                                 </span>
                               </p>
                               <p className="text-xs text-muted-foreground mt-0.5">
@@ -627,6 +635,7 @@ export function GroupScreen({
           setEditExpense(null);
         }}
         onAdd={handleAddExpense}
+        currentUser={currentUser}
         editExpense={editExpense}
       />
       <QRModal group={group} open={qrOpen} onClose={() => setQrOpen(false)} />

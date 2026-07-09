@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, ChevronDown } from "lucide-react";
-import type { Group, Expense, SplitType, Category } from "./types";
-import { generateId, CATEGORY_ICONS, MEMBER_COLORS } from "./utils";
+import type { CurrentUser, Group, Expense, SplitType, Category } from "./types";
+import { generateId, CATEGORY_ICONS, getCurrencySymbol } from "./utils";
 
 interface Props {
   group: Group;
   open: boolean;
   onClose: () => void;
   onAdd: (expense: Expense) => void;
+  currentUser: CurrentUser;
   editExpense?: Expense | null;
 }
 
@@ -27,6 +28,7 @@ export function AddExpenseModal({
   open,
   onClose,
   onAdd,
+  currentUser,
   editExpense,
 }: Props) {
   const [description, setDescription] = useState("");
@@ -77,14 +79,12 @@ export function AddExpenseModal({
   );
   const customDiff = Math.abs(customTotal - totalAmount);
 
-  const CURRENCY_SYMBOLS: Record<string, string> = {
-    PHP: "₱",
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-  };
-
-  const currencySymbol = CURRENCY_SYMBOLS[group.currency] ?? group.currency;
+  const currencySymbol = getCurrencySymbol(group.currency);
+  const currentMember = group.members.find(
+    (m) => m.id === currentUser.id || m.uid === currentUser.id,
+  );
+  const displayMemberName = (memberId: string, fallback: string) =>
+    memberId === currentMember?.id ? "You" : fallback;
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
@@ -93,7 +93,7 @@ export function AddExpenseModal({
     if (!paidBy) errs.paidBy = "Select who paid";
     if (splitType === "custom") {
       if (customDiff > 0.01)
-        errs.splits = `Splits must equal total (diff: $${customDiff.toFixed(2)})`;
+        errs.splits = `Splits must equal total (diff: ${currencySymbol}${customDiff.toFixed(2)})`;
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -274,7 +274,10 @@ export function AddExpenseModal({
                   </div>
 
                   <span className="font-medium text-foreground">
-                    {group.members[0].name}
+                    {displayMemberName(
+                      group.members[0].id,
+                      group.members[0].name,
+                    )}
                   </span>
                 </div>
               </div>
@@ -292,7 +295,7 @@ export function AddExpenseModal({
                   >
                     {group.members.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name}
+                        {displayMemberName(m.id, m.name)}
                       </option>
                     ))}
                   </select>
@@ -348,10 +351,12 @@ export function AddExpenseModal({
                       >
                         {m.name[0].toUpperCase()}
                       </div>
-                      <span className="text-sm text-foreground">{m.name}</span>
+                      <span className="text-sm text-foreground">
+                        {displayMemberName(m.id, m.name)}
+                      </span>
                     </div>
                     <span className="text-sm font-medium text-accent-foreground">
-                      $
+                      {currencySymbol}
                       {totalAmount
                         ? (totalAmount / group.members.length).toFixed(2)
                         : "0.00"}
@@ -381,11 +386,11 @@ export function AddExpenseModal({
                       {m.name[0].toUpperCase()}
                     </div>
                     <span className="text-sm text-foreground w-24 shrink-0">
-                      {m.name}
+                      {displayMemberName(m.id, m.name)}
                     </span>
                     <div className="relative flex-1">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                        $
+                        {currencySymbol}
                       </span>
                       <input
                         type="number"
@@ -409,7 +414,9 @@ export function AddExpenseModal({
                 >
                   <span>Total assigned</span>
                   <span>
-                    ${customTotal.toFixed(2)} / ${totalAmount.toFixed(2)}
+                    {currencySymbol}
+                    {customTotal.toFixed(2)} / {currencySymbol}
+                    {totalAmount.toFixed(2)}
                   </span>
                 </div>
                 {errors.splits && (
