@@ -68,13 +68,33 @@ export async function completeMagicLink(email: string, search = window.location.
     throw new Error(err.error?.message ?? "Sign-in failed");
   }
   const d = await res.json();
+  let displayName = d.displayName || null;
+
+  try {
+    displayName = (await getDisplayName(d.idToken)) || displayName;
+  } catch {
+    // The sign-in token is still valid; a missing lookup should not block login.
+  }
+
   return {
     uid: d.localId,
     email: d.email,
-    displayName: d.displayName || null,
+    displayName,
     idToken: d.idToken,
     refreshToken: d.refreshToken,
   };
+}
+
+async function getDisplayName(idToken: string): Promise<string | null> {
+  const res = await fetch(`${AUTH_URL}:lookup?key=${API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  if (!res.ok) return null;
+
+  const d = await res.json();
+  return d.users?.[0]?.displayName || null;
 }
 
 export async function refreshToken(refresh: string): Promise<Pick<AuthUser, "idToken" | "refreshToken">> {
