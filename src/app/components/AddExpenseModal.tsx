@@ -145,6 +145,7 @@ export function AddExpenseModal({
       description: description.trim(),
       amount: totalAmount,
       paidBy,
+      createdBy: editExpense?.createdBy ?? currentMember?.id ?? currentUser.id,
       splitType,
       splits,
       date,

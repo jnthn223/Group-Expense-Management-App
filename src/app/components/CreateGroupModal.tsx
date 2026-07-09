@@ -39,6 +39,7 @@ export function CreateGroupModal({
       id: generateId(),
       name: name.trim(),
       currency,
+      adminId: currentUser.id,
       members: [
         {
           id: currentUser.id,

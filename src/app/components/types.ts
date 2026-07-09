@@ -19,6 +19,7 @@ export interface Expense {
   description: string;
   amount: number;
   paidBy: string;
+  createdBy?: string;
   splitType: SplitType;
   splits: Split[];
   date: string;
@@ -35,10 +36,21 @@ export interface CurrentUser {
 export interface Group {
   id: string;
   name: string;
+  adminId?: string;
   members: Member[];
   expenses: Expense[];
+  deletedExpenses?: DeletedExpense[];
   createdAt: string;
   currency: string;
+}
+
+export interface DeletedExpense {
+  expenseId: string;
+  description: string;
+  amount: number;
+  deletedBy: string;
+  reason: string;
+  deletedAt: string;
 }
 
 export interface Balance {

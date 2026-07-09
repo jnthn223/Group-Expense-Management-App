@@ -52,6 +52,9 @@ export function GroupScreen({
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteExpense, setDeleteExpense] = useState<Expense | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteReasonError, setDeleteReasonError] = useState("");
 
   const balances = computeBalances(group);
   const settlements = computeSettlements(balances);
@@ -59,6 +62,8 @@ export function GroupScreen({
   const currentMember = group.members.find(
     (m) => m.id === currentUser.id || m.uid === currentUser.id,
   );
+  const adminId = group.adminId ?? group.members[0]?.id;
+  const isAdmin = currentMember?.id === adminId;
   const displayMemberName = (memberId: string, fallback?: string) =>
     memberId === currentMember?.id ? "You" : (fallback ?? "Unknown");
 
@@ -86,8 +91,38 @@ export function GroupScreen({
     onUpdate(updated);
   }
 
-  function handleDeleteExpense(id: string) {
-    onUpdate({ ...group, expenses: group.expenses.filter((e) => e.id !== id) });
+  function openDeleteExpense(expense: Expense) {
+    setDeleteExpense(expense);
+    setDeleteReason("");
+    setDeleteReasonError("");
+  }
+
+  function handleDeleteExpense() {
+    if (!deleteExpense || !currentMember) return;
+    const reason = deleteReason.trim();
+    if (!reason) {
+      setDeleteReasonError("Enter a reason for deleting this expense");
+      return;
+    }
+
+    onUpdate({
+      ...group,
+      expenses: group.expenses.filter((e) => e.id !== deleteExpense.id),
+      deletedExpenses: [
+        ...(group.deletedExpenses ?? []),
+        {
+          expenseId: deleteExpense.id,
+          description: deleteExpense.description,
+          amount: deleteExpense.amount,
+          deletedBy: currentMember.id,
+          reason,
+          deletedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    setDeleteExpense(null);
+    setDeleteReason("");
+    setDeleteReasonError("");
   }
 
   function handlePaymentStatus(
@@ -261,6 +296,8 @@ export function GroupScreen({
                   <div className="space-y-2">
                     {expensesByDate[date].map((exp) => {
                       const payer = getMemberById(group, exp.paidBy);
+                      const isCreator =
+                        currentMember?.id === (exp.createdBy ?? exp.paidBy);
                       return (
                         <div
                           key={exp.id}
@@ -291,29 +328,37 @@ export function GroupScreen({
                             <p className="text-sm font-semibold text-foreground">
                               {formatCurrency(exp.amount, group.currency)}
                             </p>
-                            <div className="flex gap-1 mt-1 justify-end">
-                              <button
-                                onClick={() => {
-                                  setEditExpense(exp);
-                                  setAddOpen(true);
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-                              >
-                                <Edit2
-                                  size={12}
-                                  className="text-muted-foreground"
-                                />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteExpense(exp.id)}
-                                className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
-                              >
-                                <Trash2
-                                  size={12}
-                                  className="text-destructive"
-                                />
-                              </button>
-                            </div>
+                            {(isCreator || isAdmin) && (
+                              <div className="flex gap-1 mt-1 justify-end">
+                                {isCreator && (
+                                  <button
+                                    onClick={() => {
+                                      setEditExpense(exp);
+                                      setAddOpen(true);
+                                    }}
+                                    className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+                                    title="Edit expense"
+                                  >
+                                    <Edit2
+                                      size={12}
+                                      className="text-muted-foreground"
+                                    />
+                                  </button>
+                                )}
+                                {(isCreator || isAdmin) && (
+                                  <button
+                                    onClick={() => openDeleteExpense(exp)}
+                                    className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
+                                    title="Delete expense"
+                                  >
+                                    <Trash2
+                                      size={12}
+                                      className="text-destructive"
+                                    />
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -409,7 +454,9 @@ export function GroupScreen({
                       const fromMember = getMemberById(group, split.memberId);
                       const toMember = getMemberById(group, expense.paidBy);
                       const isPayer = currentMember?.id === split.memberId;
-                      const isCreator = currentMember?.id === expense.paidBy;
+                      const isCreator =
+                        currentMember?.id ===
+                        (expense.createdBy ?? expense.paidBy);
                       const isPending = split.paymentStatus === "pending";
                       const isRejected = split.paymentStatus === "rejected";
 
@@ -618,6 +665,62 @@ export function GroupScreen({
               </button>
               <button
                 onClick={handleDeleteGroup}
+                className="flex-1 py-3.5 rounded-2xl bg-destructive text-white text-sm font-semibold transition-all active:scale-95"
+              >
+                Delete
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root
+        open={!!deleteExpense}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteExpense(null);
+            setDeleteReason("");
+            setDeleteReasonError("");
+          }
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm" />
+          <Dialog.Content className="fixed inset-x-4 bottom-8 z-50 bg-card rounded-3xl p-6 shadow-2xl">
+            <Dialog.Title className="text-base font-semibold text-foreground mb-1">
+              Delete expense?
+            </Dialog.Title>
+            <Dialog.Description className="text-sm text-muted-foreground mb-4">
+              Give a reason for deleting "{deleteExpense?.description}". This
+              will be saved with the group history.
+            </Dialog.Description>
+            <textarea
+              value={deleteReason}
+              onChange={(e) => {
+                setDeleteReason(e.target.value);
+                setDeleteReasonError("");
+              }}
+              placeholder="Reason for deletion"
+              className="w-full min-h-24 px-4 py-3 rounded-xl bg-input-background border border-border text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none text-sm"
+            />
+            {deleteReasonError && (
+              <p className="text-destructive text-xs mt-1.5">
+                {deleteReasonError}
+              </p>
+            )}
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => {
+                  setDeleteExpense(null);
+                  setDeleteReason("");
+                  setDeleteReasonError("");
+                }}
+                className="flex-1 py-3.5 rounded-2xl bg-muted text-foreground text-sm font-medium transition-all active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteExpense}
                 className="flex-1 py-3.5 rounded-2xl bg-destructive text-white text-sm font-semibold transition-all active:scale-95"
               >
                 Delete
