@@ -3,8 +3,10 @@
 //   /users/{uid}        → { groupIds: string[] }
 //   /groups/{groupId}   → { data: JSON<Group>, memberIds: string[] }
 
+import { doc as fsDoc, onSnapshot } from "firebase/firestore";
 import { fsGet, fsSet, fsUpdate, fsGetMultiple } from "./firebaseRest";
 import { getValidIdToken } from "./auth";
+import { db } from "./firebase";
 import type { Group, Member } from "../app/components/types";
 import { MEMBER_COLORS, generateId } from "../app/components/utils";
 
@@ -50,6 +52,25 @@ function unpackGroup(doc: Record<string, unknown>): Group | null {
   } catch {
     return null;
   }
+}
+
+export function subscribeGroup(
+  groupId: string,
+  onChange: (group: Group | null) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  return onSnapshot(
+    fsDoc(db, "groups", groupId),
+    (snapshot) => {
+      if (!snapshot.exists() || snapshot.data().deleted) {
+        onChange(null);
+        return;
+      }
+
+      onChange(unpackGroup(snapshot.data()));
+    },
+    (error) => onError?.(error),
+  );
 }
 
 // ─── Public API ────────────────────────────────────────────────────────────

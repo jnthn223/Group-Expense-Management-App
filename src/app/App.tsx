@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Group, CurrentUser } from "./components/types";
 import {
   isMagicLink,
@@ -20,8 +20,9 @@ import {
   joinGroup,
   deleteGroup,
   pollGroup,
+  subscribeGroup,
 } from "../lib/groupService";
-import { MEMBER_COLORS, encodeGroupForUrl } from "./components/utils";
+import { MEMBER_COLORS } from "./components/utils";
 import { HomeScreen } from "./components/HomeScreen";
 import { GroupScreen } from "./components/GroupScreen";
 import { LoginScreen, CompleteProfileScreen } from "./components/LoginScreen";
@@ -36,7 +37,7 @@ type AuthState =
   | "authenticated";
 type Screen = "home" | "group" | "profile";
 
-const POLL_MS = 8000; // refresh open group every 8 s
+const FALLBACK_POLL_MS = 3000;
 
 export default function App() {
   const [authState, setAuthState] = useState<AuthState>("loading");
@@ -50,7 +51,10 @@ export default function App() {
     type: "success" | "error";
   } | null>(null);
   const [groupsLoading, setGroupsLoading] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const syncRef = useRef<{
+    unsubscribe?: () => void;
+    poll?: ReturnType<typeof setInterval>;
+  }>({});
 
   // ── Banner helper ───────────────────────────────────────────────────────
   function showBanner(text: string, type: "success" | "error" = "success") {
@@ -159,24 +163,57 @@ export default function App() {
     }
   }
 
-  // ── Poll open group for live updates ───────────────────────────────────
+  // ── Keep open group in sync ─────────────────────────────────────────────
   useEffect(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
+    syncRef.current.unsubscribe?.();
+    if (syncRef.current.poll) clearInterval(syncRef.current.poll);
+    syncRef.current = {};
     if (screen !== "group" || !selectedGroup) return;
 
-    pollRef.current = setInterval(async () => {
-      try {
-        const fresh = await pollGroup(selectedGroup.id);
-        if (!fresh) return;
-        setSelectedGroup(fresh);
-        setGroups((prev) => prev.map((g) => (g.id === fresh.id ? fresh : g)));
-      } catch {}
-    }, POLL_MS);
+    const applyFreshGroup = (fresh: Group | null) => {
+      if (!fresh) return;
+      setSelectedGroup(fresh);
+      setGroups((prev) => prev.map((g) => (g.id === fresh.id ? fresh : g)));
+    };
+
+    const startFallbackPoll = () => {
+      if (syncRef.current.poll) return;
+      const poll = async () => {
+        try {
+          applyFreshGroup(await pollGroup(selectedGroup.id));
+        } catch {}
+      };
+      poll();
+      syncRef.current.poll = setInterval(poll, FALLBACK_POLL_MS);
+    };
+
+    try {
+      syncRef.current.unsubscribe = subscribeGroup(
+        selectedGroup.id,
+        applyFreshGroup,
+        startFallbackPoll,
+      );
+    } catch {
+      startFallbackPoll();
+    }
 
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      syncRef.current.unsubscribe?.();
+      if (syncRef.current.poll) clearInterval(syncRef.current.poll);
+      syncRef.current = {};
     };
   }, [screen, selectedGroup?.id]);
+
+  useEffect(() => {
+    if (authState !== "authenticated" || !session) return;
+
+    const refreshOnFocus = () => {
+      fetchGroups(session.uid);
+    };
+
+    window.addEventListener("focus", refreshOnFocus);
+    return () => window.removeEventListener("focus", refreshOnFocus);
+  }, [authState, session?.uid]);
 
   // ── Join group helper ───────────────────────────────────────────────────
   async function handleJoinGroup(

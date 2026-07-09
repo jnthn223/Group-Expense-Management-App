@@ -1,5 +1,8 @@
 // Firebase REST API — no SDK, works in any sandboxed environment.
 
+import { signInWithEmailLink } from "firebase/auth";
+import { auth } from "./firebase";
+
 const API_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
 
 const PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID;
@@ -58,30 +61,23 @@ export async function completeMagicLink(email: string, search = window.location.
   const oobCode = new URLSearchParams(search).get("oobCode");
   if (!oobCode) throw new Error("No sign-in code in URL");
 
-  const res = await fetch(`${AUTH_URL}:signInWithEmailLink?key=${API_KEY}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, oobCode }),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error?.message ?? "Sign-in failed");
-  }
-  const d = await res.json();
-  let displayName = d.displayName || null;
+  const credential = await signInWithEmailLink(auth, email, window.location.href);
+  const sdkUser = credential.user;
+  const idToken = await sdkUser.getIdToken();
+  let displayName = sdkUser.displayName || null;
 
   try {
-    displayName = (await getDisplayName(d.idToken)) || displayName;
+    displayName = (await getDisplayName(idToken)) || displayName;
   } catch {
     // The sign-in token is still valid; a missing lookup should not block login.
   }
 
   return {
-    uid: d.localId,
-    email: d.email,
+    uid: sdkUser.uid,
+    email: sdkUser.email ?? email,
     displayName,
-    idToken: d.idToken,
-    refreshToken: d.refreshToken,
+    idToken,
+    refreshToken: sdkUser.refreshToken,
   };
 }
 
