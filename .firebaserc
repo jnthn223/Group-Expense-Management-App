@@ -2,6 +2,14 @@
   "projects": {
     "bayadtayoopo": "group-expense-management-app"
   },
-  "targets": {},
+  "targets": {
+    "group-expense-management-app": {
+      "hosting": {
+        "app": [
+          "bayadtayoopo"
+        ]
+      }
+    }
+  },
   "etags": {}
 }
