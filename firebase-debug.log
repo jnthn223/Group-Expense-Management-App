@@ -1,0 +1,69 @@
+[debug] [2026-07-09T08:33:43.619Z] ----------------------------------------------------------------------
+[debug] [2026-07-09T08:33:43.621Z] Command:       /Users/jonathanaplacador/.nvm/versions/node/v20.15.0/bin/node /Users/jonathanaplacador/.nvm/versions/node/v18.20.3/bin/firebase deploy --only hosting,firestore:rules
+[debug] [2026-07-09T08:33:43.621Z] CLI Version:   15.22.4
+[debug] [2026-07-09T08:33:43.621Z] Platform:      darwin
+[debug] [2026-07-09T08:33:43.621Z] Node Version:  v20.15.0
+[debug] [2026-07-09T08:33:43.621Z] Detected Agent: unknown
+[debug] [2026-07-09T08:33:43.621Z] Time:          Thu Jul 09 2026 16:33:43 GMT+0800 (Philippine Standard Time)
+[debug] [2026-07-09T08:33:43.621Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-09T08:33:44.377Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-09T08:33:44.377Z] > authorizing via signed-in user (jonathanaplacador.dev@gmail.com)
+[debug] [2026-07-09T08:33:44.377Z] [iam] checking project group-expense-management-app for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-07-09T08:33:44.378Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:44.378Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:44.378Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/group-expense-management-app:testIamPermissions [none]
+[debug] [2026-07-09T08:33:44.378Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/group-expense-management-app:testIamPermissions  x-goog-user-project=group-expense-management-app
+[debug] [2026-07-09T08:33:44.378Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/group-expense-management-app:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-07-09T08:33:45.432Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/group-expense-management-app:testIamPermissions 200
+[debug] [2026-07-09T08:33:45.432Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/group-expense-management-app:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-07-09T08:33:45.433Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:45.433Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:45.433Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/group-expense-management-app [none]
+[debug] [2026-07-09T08:33:45.868Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/group-expense-management-app 200
+[debug] [2026-07-09T08:33:45.868Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/group-expense-management-app {"projectId":"group-expense-management-app","projectNumber":"239943067123","displayName":"group-expense-management-app","name":"projects/group-expense-management-app","resources":{"hostingSite":"group-expense-management-app"},"state":"ACTIVE","labels":{"firebase":"enabled"},"etag":"1_63236f8b-974e-4ce0-a39c-023a688280f2"}
+[info] 
+[info] === Deploying to 'group-expense-management-app'...
+[info] 
+[info] i  deploying firestore, hosting 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-07-09T08:33:45.871Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:45.871Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:45.871Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/group-expense-management-app/databases/(default) [none]
+[debug] [2026-07-09T08:33:46.312Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/group-expense-management-app/databases/(default) 200
+[debug] [2026-07-09T08:33:46.312Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/group-expense-management-app/databases/(default) {"name":"projects/group-expense-management-app/databases/(default)","uid":"75301070-161e-4189-a98f-2ff655b6f281","createTime":"2026-06-22T03:22:51.779269Z","updateTime":"2026-06-22T03:22:51.779269Z","locationId":"asia-southeast1","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-07-09T07:33:46.293697Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"zas","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","etag":"INmPmNyXxZUDMOLFtPTymZUD"}
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-07-09T08:33:46.316Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:46.316Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:46.316Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/group-expense-management-app:test [none]
+[debug] [2026-07-09T08:33:46.316Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/group-expense-management-app:test [omitted]
+[debug] [2026-07-09T08:33:47.646Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/group-expense-management-app:test 200
+[debug] [2026-07-09T08:33:47.646Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/group-expense-management-app:test {}
+[info] ✔  cloud.firestore: rules file firestore.rules compiled successfully 
+[debug] [2026-07-09T08:33:47.648Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:47.648Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:47.648Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/group-expense-management-app/sites/group-expense-management-app [none]
+[debug] [2026-07-09T08:33:48.627Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/group-expense-management-app/sites/group-expense-management-app 200
+[debug] [2026-07-09T08:33:48.627Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/group-expense-management-app/sites/group-expense-management-app {"name":"projects/group-expense-management-app/sites/group-expense-management-app","defaultUrl":"https://group-expense-management-app.web.app","type":"DEFAULT_SITE"}
+[debug] [2026-07-09T08:33:48.629Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:48.629Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:48.630Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/group-expense-management-app/versions [none]
+[debug] [2026-07-09T08:33:48.630Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/group-expense-management-app/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-07-09T08:33:50.590Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/group-expense-management-app/versions 200
+[debug] [2026-07-09T08:33:50.591Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/group-expense-management-app/versions {"name":"projects/239943067123/sites/group-expense-management-app/versions/89a1ebc8a754870b","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-07-09T08:33:50.591Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:50.591Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:50.591Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/group-expense-management-app/releases pageSize=10&pageToken=
+[debug] [2026-07-09T08:33:50.857Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/group-expense-management-app/releases 200
+[debug] [2026-07-09T08:33:50.857Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/group-expense-management-app/releases {"releases":[{"name":"projects/group-expense-management-app/releases/cloud.firestore","rulesetName":"projects/group-expense-management-app/rulesets/47ec8de4-f3b0-4341-ae7e-907c2f0a4bac","createTime":"2026-06-22T03:22:55.772544Z","updateTime":"2026-07-09T08:00:02.269741Z"}]}
+[debug] [2026-07-09T08:33:50.858Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:50.858Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:50.858Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/group-expense-management-app/rulesets/47ec8de4-f3b0-4341-ae7e-907c2f0a4bac [none]
+[debug] [2026-07-09T08:33:51.293Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/group-expense-management-app/rulesets/47ec8de4-f3b0-4341-ae7e-907c2f0a4bac 200
+[debug] [2026-07-09T08:33:51.293Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/group-expense-management-app/rulesets/47ec8de4-f3b0-4341-ae7e-907c2f0a4bac [omitted]
+[info] i  firestore: uploading rules firestore.rules... 
+[debug] [2026-07-09T08:33:51.294Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:51.294Z] Checked if tokens are valid: true, expires at: 1783587531904
+[debug] [2026-07-09T08:33:51.294Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/group-expense-management-app/rulesets [none]
+[debug] [2026-07-09T08:33:51.294Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/group-expense-management-app/rulesets [omitted]
