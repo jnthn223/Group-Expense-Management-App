@@ -3,8 +3,10 @@ import {
   ArrowLeft,
   Check,
   Clock3,
+  MessageCircle,
   Plus,
   QrCode,
+  Send,
   Users,
   Receipt,
   BarChart2,
@@ -22,6 +24,7 @@ import {
   computeSettlements,
   formatCurrency,
   CATEGORY_ICONS,
+  generateId,
   getMemberById,
   getTotalExpenses,
 } from "./utils";
@@ -29,7 +32,7 @@ import { AddExpenseModal } from "./AddExpenseModal";
 import { QRModal } from "./QRModal";
 import { InviteModal } from "./InviteModal";
 
-type Tab = "expenses" | "balances" | "settle";
+type Tab = "expenses" | "balances" | "settle" | "chat";
 
 interface Props {
   group: Group;
@@ -55,10 +58,14 @@ export function GroupScreen({
   const [deleteExpense, setDeleteExpense] = useState<Expense | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleteReasonError, setDeleteReasonError] = useState("");
+  const [messageText, setMessageText] = useState("");
 
   const balances = computeBalances(group);
   const settlements = computeSettlements(balances);
   const total = getTotalExpenses(group);
+  const messages = [...(group.messages ?? [])].sort((a, b) =>
+    a.createdAt.localeCompare(b.createdAt),
+  );
   const currentMember = group.members.find(
     (m) => m.id === currentUser.id || m.uid === currentUser.id,
   );
@@ -145,6 +152,25 @@ export function GroupScreen({
           : expense,
       ),
     });
+  }
+
+  function handleSendMessage() {
+    const text = messageText.trim();
+    if (!text || !currentMember) return;
+
+    onUpdate({
+      ...group,
+      messages: [
+        ...(group.messages ?? []),
+        {
+          id: generateId(),
+          memberId: currentMember.id,
+          text,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
+    setMessageText("");
   }
 
   function handleDeleteGroup() {
@@ -250,6 +276,7 @@ export function GroupScreen({
             { id: "expenses", label: "Expenses", icon: Receipt },
             { id: "balances", label: "Balances", icon: BarChart2 },
             { id: "settle", label: "Settle Up", icon: Users },
+            { id: "chat", label: "Chat", icon: MessageCircle },
           ] as { id: Tab; label: string; icon: any }[]
         ).map(({ id, label, icon: Icon }) => (
           <button
@@ -626,22 +653,134 @@ export function GroupScreen({
             )}
           </div>
         )}
+
+        {tab === "chat" && (
+          <div className="p-4 space-y-3">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center mb-4">
+                  <MessageCircle
+                    size={28}
+                    className="text-accent-foreground"
+                  />
+                </div>
+                <p className="text-foreground font-medium mb-1">
+                  No messages yet
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Start a group conversation
+                </p>
+              </div>
+            ) : (
+              messages.map((message) => {
+                const sender = getMemberById(group, message.memberId);
+                const isMine = currentMember?.id === message.memberId;
+                return (
+                  <div
+                    key={message.id}
+                    className={`flex gap-2 ${isMine ? "justify-end" : "justify-start"}`}
+                  >
+                    {!isMine && (
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs text-white font-medium shrink-0 mt-1"
+                        style={{ backgroundColor: sender?.color }}
+                      >
+                        {(sender?.name ?? "?")[0].toUpperCase()}
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[78%] rounded-2xl px-4 py-3 ${
+                        isMine
+                          ? "text-primary-foreground rounded-br-md"
+                          : "bg-card border border-border text-foreground rounded-bl-md"
+                      }`}
+                      style={
+                        isMine
+                          ? { backgroundColor: "var(--primary)" }
+                          : undefined
+                      }
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <p
+                          className={`text-xs font-medium ${
+                            isMine
+                              ? "text-primary-foreground/80"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {displayMemberName(message.memberId, sender?.name)}
+                        </p>
+                        <p
+                          className={`text-[11px] ${
+                            isMine
+                              ? "text-primary-foreground/70"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {new Date(message.createdAt).toLocaleTimeString(
+                            "en-US",
+                            {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </p>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap break-words">
+                        {message.text}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
       </div>
 
       {/* FAB */}
-      <div className="p-4 border-t border-border bg-card">
-        <button
-          onClick={() => {
-            setEditExpense(null);
-            setAddOpen(true);
-          }}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-primary-foreground font-semibold transition-all active:scale-95"
-          style={{ backgroundColor: "var(--primary)" }}
-        >
-          <Plus size={20} />
-          Add Expense
-        </button>
-      </div>
+      {tab === "chat" ? (
+        <div className="p-4 border-t border-border bg-card">
+          <div className="flex items-end gap-2">
+            <textarea
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder="Message the group"
+              rows={1}
+              className="flex-1 max-h-28 min-h-12 px-4 py-3 rounded-2xl bg-input-background border border-border text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none text-sm"
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={!messageText.trim() || !currentMember}
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-primary-foreground transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              style={{ backgroundColor: "var(--primary)" }}
+              title="Send message"
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 border-t border-border bg-card">
+          <button
+            onClick={() => {
+              setEditExpense(null);
+              setAddOpen(true);
+            }}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-primary-foreground font-semibold transition-all active:scale-95"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+            <Plus size={20} />
+            Add Expense
+          </button>
+        </div>
+      )}
 
       {/* Delete confirmation dialog */}
       <Dialog.Root open={confirmDelete} onOpenChange={setConfirmDelete}>

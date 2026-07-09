@@ -40,6 +40,7 @@ export interface Group {
   members: Member[];
   expenses: Expense[];
   deletedExpenses?: DeletedExpense[];
+  messages?: ChatMessage[];
   createdAt: string;
   currency: string;
 }
@@ -51,6 +52,13 @@ export interface DeletedExpense {
   deletedBy: string;
   reason: string;
   deletedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  memberId: string;
+  text: string;
+  createdAt: string;
 }
 
 export interface Balance {
