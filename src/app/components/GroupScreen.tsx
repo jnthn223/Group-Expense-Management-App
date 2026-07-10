@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
+  Download,
   Clock3,
+  FileSpreadsheet,
   MessageCircle,
   Plus,
   QrCode,
@@ -13,6 +15,7 @@ import {
   Trash2,
   Edit2,
   MoreVertical,
+  Upload,
   UserPlus,
   X,
 } from "lucide-react";
@@ -31,6 +34,11 @@ import {
 import { AddExpenseModal } from "./AddExpenseModal";
 import { QRModal } from "./QRModal";
 import { InviteModal } from "./InviteModal";
+import {
+  exportExpensesCsv,
+  exportExpensesTemplateCsv,
+  parseExpensesCsv,
+} from "./csvExpenses";
 
 type Tab = "expenses" | "balances" | "settle" | "chat";
 
@@ -63,6 +71,13 @@ export function GroupScreen({
   const [deleteReason, setDeleteReason] = useState("");
   const [deleteReasonError, setDeleteReasonError] = useState("");
   const [messageText, setMessageText] = useState("");
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvErrors, setCsvErrors] = useState<string[]>([]);
+  const [csvImportCount, setCsvImportCount] = useState<number | null>(null);
+  const [pendingCsvExpenses, setPendingCsvExpenses] = useState<Expense[] | null>(
+    null,
+  );
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const balances = computeBalances(group);
   const settlements = computeSettlements(balances);
@@ -201,6 +216,68 @@ export function GroupScreen({
     onBack();
   }
 
+  function downloadCsv(filename: string, csv: string) {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function csvFilename(suffix: string) {
+    const safeName = group.name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return `${safeName || "group"}-${suffix}.csv`;
+  }
+
+  function handleDownloadTemplate() {
+    setCsvErrors([]);
+    setCsvImportCount(null);
+    setPendingCsvExpenses(null);
+    downloadCsv(csvFilename("expense-template"), exportExpensesTemplateCsv(group));
+  }
+
+  function handleExportExpenses() {
+    setCsvErrors([]);
+    setCsvImportCount(null);
+    setPendingCsvExpenses(null);
+    downloadCsv(csvFilename("expenses"), exportExpensesCsv(group));
+  }
+
+  async function handleImportFile(file: File) {
+    if (!currentMember) return;
+    const text = await file.text();
+    const result = parseExpensesCsv(text, group, currentMember.id);
+    if (!result.ok) {
+      setCsvErrors(result.errors);
+      setCsvImportCount(null);
+      setPendingCsvExpenses(null);
+      return;
+    }
+
+    setPendingCsvExpenses(result.expenses);
+    setCsvErrors([]);
+    setCsvImportCount(null);
+  }
+
+  function confirmCsvImport() {
+    if (!pendingCsvExpenses) return;
+    onUpdate({
+      ...group,
+      expenses: [...pendingCsvExpenses, ...group.expenses],
+    });
+    setCsvErrors([]);
+    setCsvImportCount(pendingCsvExpenses.length);
+    setPendingCsvExpenses(null);
+  }
+
   const expensesByDate = group.expenses.reduce<Record<string, Expense[]>>(
     (acc, exp) => {
       if (!acc[exp.date]) acc[exp.date] = [];
@@ -243,19 +320,32 @@ export function GroupScreen({
             </button>
 
             {/* ⋯ menu */}
-            {isAdmin && (
-              <DropdownMenu.Root>
-                <DropdownMenu.Trigger asChild>
-                  <button className="p-2 rounded-full hover:bg-muted transition-colors">
-                    <MoreVertical size={19} className="text-foreground" />
-                  </button>
-                </DropdownMenu.Trigger>
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    align="end"
-                    sideOffset={6}
-                    className="z-50 min-w-[160px] bg-card border border-border rounded-2xl shadow-xl overflow-hidden py-1"
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button className="p-2 rounded-full hover:bg-muted transition-colors">
+                  <MoreVertical size={19} className="text-foreground" />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={6}
+                  className="z-50 min-w-[170px] bg-card border border-border rounded-2xl shadow-xl overflow-hidden py-1"
+                >
+                  <DropdownMenu.Item
+                    onSelect={() => {
+                      setCsvErrors([]);
+                      setCsvImportCount(null);
+                      setPendingCsvExpenses(null);
+                      setCsvOpen(true);
+                    }}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-foreground cursor-pointer hover:bg-muted outline-none transition-colors"
                   >
+                    <FileSpreadsheet size={15} />
+                    CSV Tools
+                  </DropdownMenu.Item>
+                  {isAdmin && (
+                    <>
                     <DropdownMenu.Item
                       onSelect={openEditGroup}
                       className="flex items-center gap-3 px-4 py-3 text-sm text-foreground cursor-pointer hover:bg-muted outline-none transition-colors"
@@ -270,10 +360,11 @@ export function GroupScreen({
                       <Trash2 size={15} />
                       Delete Group
                     </DropdownMenu.Item>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-              </DropdownMenu.Root>
-            )}
+                    </>
+                  )}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           </div>
         </div>
 
@@ -968,6 +1059,137 @@ export function GroupScreen({
               >
                 Delete
               </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={csvOpen} onOpenChange={setCsvOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm" />
+          <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-3xl shadow-2xl">
+            <div className="pt-4 pb-3 px-5 flex items-center justify-between border-b border-border relative">
+              <div className="w-10 h-1 bg-border rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2" />
+              <Dialog.Title className="text-lg font-semibold text-foreground">
+                CSV Tools
+              </Dialog.Title>
+              <button
+                onClick={() => setCsvOpen(false)}
+                className="p-2 rounded-full hover:bg-muted transition-colors"
+              >
+                <X size={18} className="text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="p-5 pb-10 space-y-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) {
+                    handleImportFile(file).catch(() => {
+                      setCsvErrors(["Unable to read that CSV file"]);
+                      setCsvImportCount(null);
+                    });
+                  }
+                }}
+              />
+
+              <button
+                onClick={handleDownloadTemplate}
+                className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl bg-input-background border border-border text-foreground text-sm font-medium transition-all active:scale-95"
+              >
+                <Download size={18} className="text-muted-foreground" />
+                Download Template
+              </button>
+
+              {isAdmin && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl bg-input-background border border-border text-foreground text-sm font-medium transition-all active:scale-95"
+                >
+                  <Upload size={18} className="text-muted-foreground" />
+                  Import Expenses CSV
+                </button>
+              )}
+
+              <button
+                onClick={handleExportExpenses}
+                className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl bg-input-background border border-border text-foreground text-sm font-medium transition-all active:scale-95"
+              >
+                <FileSpreadsheet size={18} className="text-muted-foreground" />
+                Export Expenses CSV
+              </button>
+
+              {!isAdmin && (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Only the group admin can import expenses.
+                </p>
+              )}
+
+              {csvImportCount !== null && (
+                <p className="text-sm text-green-600 font-medium">
+                  Imported {csvImportCount} expense
+                  {csvImportCount === 1 ? "" : "s"}.
+                </p>
+              )}
+
+              {pendingCsvExpenses && (
+                <div className="rounded-2xl bg-accent border border-border p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Import {pendingCsvExpenses.length} expense
+                      {pendingCsvExpenses.length === 1 ? "" : "s"}?
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This will add the CSV expenses to the group.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setPendingCsvExpenses(null)}
+                      className="py-3 rounded-xl bg-muted text-foreground text-sm font-medium transition-all active:scale-95"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmCsvImport}
+                      className="py-3 rounded-xl text-primary-foreground text-sm font-semibold transition-all active:scale-95"
+                      style={{ backgroundColor: "var(--primary)" }}
+                    >
+                      Import
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {csvErrors.length > 0 && (
+                <div className="rounded-2xl bg-destructive/10 border border-destructive/20 p-4">
+                  <p className="text-sm font-semibold text-destructive mb-2">
+                    Import failed
+                  </p>
+                  <ul className="space-y-1">
+                    {csvErrors.slice(0, 8).map((error) => (
+                      <li
+                        key={error}
+                        className="text-xs text-destructive leading-relaxed"
+                      >
+                        {error}
+                      </li>
+                    ))}
+                  </ul>
+                  {csvErrors.length > 8 && (
+                    <p className="text-xs text-destructive mt-2">
+                      {csvErrors.length - 8} more error
+                      {csvErrors.length - 8 === 1 ? "" : "s"}.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </Dialog.Content>
         </Dialog.Portal>
