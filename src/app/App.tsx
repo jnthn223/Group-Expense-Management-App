@@ -427,8 +427,8 @@ export default function App() {
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="size-full flex justify-center bg-muted overflow-hidden">
-      <div className="w-full max-w-sm h-full relative overflow-hidden bg-background flex flex-col shadow-2xl">
+    <div className="size-full flex justify-center bg-background sm:bg-muted overflow-hidden">
+      <div className="w-full h-full sm:max-w-sm relative overflow-hidden bg-background flex flex-col sm:shadow-2xl">
         {/* Banner */}
         {banner && (
           <div
