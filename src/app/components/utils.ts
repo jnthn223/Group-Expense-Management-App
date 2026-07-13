@@ -180,6 +180,9 @@ export function mergeGroupMember(
   return {
     ...group,
     adminId: group.adminId ? replace(group.adminId) : group.adminId,
+    adminIds: group.adminIds?.map(replace).filter(
+      (memberId, index, values) => values.indexOf(memberId) === index,
+    ),
     members: group.members.filter((member) => member.id !== placeholderId),
     expenses: group.expenses.map((expense) => {
       const combined = new Map<string, Split>();

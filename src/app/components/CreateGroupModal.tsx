@@ -46,6 +46,7 @@ export function CreateGroupModal({
       avatarSeed,
       currency,
       adminId: currentUser.id,
+      adminIds: [currentUser.id],
       members: [
         {
           id: currentUser.id,

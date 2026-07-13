@@ -1,6 +1,6 @@
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, Mail, Loader2, CheckCircle2, Send, UserPlus, Merge, Trash2, Share2, MessageSquareText } from "lucide-react";
+import { X, Mail, Loader2, CheckCircle2, Send, UserPlus, Merge, Trash2, Share2, MessageSquareText, ShieldCheck } from "lucide-react";
 import { sendMagicLink } from "../../lib/firebaseRest";
 import type { Group } from "./types";
 import { UserAvatar } from "./UserAvatar";
@@ -13,6 +13,7 @@ interface Props {
   onAddPending?: (name: string) => string | undefined;
   onMergePending?: (pendingId: string, joinedId: string) => void;
   onDeletePending?: (memberId: string) => string | undefined;
+  onSetMemberAdmin?: (memberId: string, makeAdmin: boolean) => string | undefined;
 }
 
 type Step = "form" | "sent";
@@ -25,6 +26,7 @@ export function InviteModal({
   onAddPending,
   onMergePending,
   onDeletePending,
+  onSetMemberAdmin,
 }: Props) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,6 +41,20 @@ export function InviteModal({
   const [mergeTargets, setMergeTargets] = useState<Record<string, string>>({});
   const pendingMembers = group.members.filter((member) => !member.uid);
   const joinedMembers = group.members.filter((member) => !!member.uid);
+  const ownerId = group.adminId ?? group.members[0]?.id;
+  const isOwner = (member: Group["members"][number]) =>
+    member.id === ownerId || member.uid === ownerId;
+  const memberIsAdmin = (member: Group["members"][number]) =>
+    isOwner(member) ||
+    (group.adminIds ?? []).some(
+      (adminId) => adminId === member.id || adminId === member.uid,
+    );
+
+  function setMemberAdmin(memberId: string, makeAdmin: boolean) {
+    const adminError = onSetMemberAdmin?.(memberId, makeAdmin);
+    if (adminError) setPendingError(adminError);
+    else setPendingError("");
+  }
 
   function handleClose() {
     setEmail("");
@@ -157,6 +173,43 @@ export function InviteModal({
               <div className="space-y-4">
                 {isAdmin && (
                   <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-3">
+                    <div className="space-y-2 pb-3 border-b border-border">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Admin access</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Only people who joined this group can be promoted. The owner cannot be demoted.
+                        </p>
+                      </div>
+                      {joinedMembers.map((member) => {
+                        const owner = isOwner(member);
+                        const admin = memberIsAdmin(member);
+                        return (
+                          <div key={member.id} className="flex items-center gap-2 rounded-xl bg-card border border-border p-2.5">
+                            <UserAvatar name={member.name} color={member.color} seed={member.avatarSeed} className="w-8 h-8 rounded-full" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{member.name}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {owner ? "Group owner" : admin ? "Co-admin" : "Member"}
+                              </p>
+                            </div>
+                            {!owner && (
+                              <button
+                                type="button"
+                                onClick={() => setMemberAdmin(member.id, !admin)}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-semibold ${
+                                  admin
+                                    ? "bg-muted text-muted-foreground"
+                                    : "bg-primary text-primary-foreground"
+                                }`}
+                              >
+                                <ShieldCheck size={14} />
+                                {admin ? "Remove admin" : "Make admin"}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">Add now, let them join later</p>
                       <p className="text-xs text-muted-foreground mt-1">Pending members can be included in expenses immediately.</p>

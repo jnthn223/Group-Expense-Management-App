@@ -71,6 +71,7 @@ export interface Group {
   name: string;
   avatarSeed?: string;
   adminId?: string;
+  adminIds?: string[];
   members: Member[];
   expenses: Expense[];
   deletedExpenses?: DeletedExpense[];

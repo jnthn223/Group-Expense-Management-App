@@ -128,7 +128,14 @@ export function GroupScreen({
     (m) => m.id === currentUser.id || m.uid === currentUser.id,
   );
   const adminId = group.adminId ?? group.members[0]?.id;
-  const isAdmin = currentMember?.id === adminId;
+  const isOwner = !!currentMember &&
+    (currentMember.id === adminId || currentMember.uid === adminId);
+  const isAdmin = !!currentMember && (
+    isOwner ||
+    (group.adminIds ?? []).some(
+      (memberId) => memberId === currentMember.id || memberId === currentMember.uid,
+    )
+  );
   const displayMemberName = (memberId: string, fallback?: string) =>
     memberId === currentMember?.id ? "You" : (fallback ?? "Unknown");
 
@@ -482,6 +489,26 @@ export function GroupScreen({
     return undefined;
   }
 
+  function handleSetMemberAdmin(memberId: string, makeAdmin: boolean): string | undefined {
+    if (!isAdmin) return "Only a group admin can manage admin access";
+    const member = group.members.find((candidate) => candidate.id === memberId);
+    if (!member?.uid) return "Only members who have joined can become admins";
+    const isGroupOwner = member.id === adminId || member.uid === adminId;
+    if (isGroupOwner && !makeAdmin) return "The group owner cannot be removed as an admin";
+
+    const identifiers = new Set([member.id, member.uid].filter(Boolean));
+    const nextAdminIds = (group.adminIds ?? []).filter(
+      (adminMemberId) => !identifiers.has(adminMemberId),
+    );
+    if (makeAdmin) nextAdminIds.push(member.id);
+
+    onUpdate({
+      ...group,
+      adminIds: [...new Set([adminId, ...nextAdminIds].filter(Boolean) as string[])],
+    });
+    return undefined;
+  }
+
   function openEditGroup() {
     setGroupNameInput(group.name);
     setGroupCurrencyInput(group.currency);
@@ -508,6 +535,7 @@ export function GroupScreen({
   }
 
   function handleDeleteGroup() {
+    if (!isOwner) return;
     onDelete(group.id);
     onBack();
   }
@@ -649,13 +677,13 @@ export function GroupScreen({
                       <Edit2 size={15} />
                       Edit Details
                     </DropdownMenu.Item>
-                    <DropdownMenu.Item
+                    {isOwner && <DropdownMenu.Item
                       onSelect={() => setConfirmDelete(true)}
                       className="flex items-center gap-3 px-4 py-3 text-sm text-destructive cursor-pointer hover:bg-destructive/10 outline-none transition-colors"
                     >
                       <Trash2 size={15} />
                       Delete Group
-                    </DropdownMenu.Item>
+                    </DropdownMenu.Item>}
                     </>
                   )}
                 </DropdownMenu.Content>
@@ -1756,6 +1784,7 @@ export function GroupScreen({
         onAddPending={handleAddPendingMember}
         onMergePending={handleMergePendingMember}
         onDeletePending={handleDeletePendingMember}
+        onSetMemberAdmin={handleSetMemberAdmin}
       />
     </div>
   );
