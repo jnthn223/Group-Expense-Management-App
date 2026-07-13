@@ -30,6 +30,7 @@ import { HomeScreen } from "./components/HomeScreen";
 import { GroupScreen } from "./components/GroupScreen";
 import { LoginScreen, CompleteProfileScreen } from "./components/LoginScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
+import { BrandMark, BrandWordmark } from "./components/Brand";
 import { auth } from "../lib/firebase";
 import { signOut } from "firebase/auth";
 
@@ -43,6 +44,7 @@ type AuthState =
 type Screen = "home" | "group" | "profile";
 
 const FALLBACK_POLL_MS = 3000;
+const SPLASH_MIN_MS = 1200;
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
@@ -60,10 +62,19 @@ export default function App() {
     type: "success" | "error";
   } | null>(null);
   const [groupsLoading, setGroupsLoading] = useState(false);
+  const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(false);
   const syncRef = useRef<{
     unsubscribe?: () => void;
     poll?: ReturnType<typeof setInterval>;
   }>({});
+
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setSplashMinimumElapsed(true),
+      SPLASH_MIN_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // ── Banner helper ───────────────────────────────────────────────────────
   function showBanner(text: string, type: "success" | "error" = "success") {
@@ -447,34 +458,40 @@ export default function App() {
           </div>
         )}
 
-        {/* Loading */}
-        {authState === "loading" && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: "var(--primary)" }}
-            >
-              <span className="text-2xl">💸</span>
+        {/* Branded startup splash */}
+        {(authState === "loading" || !splashMinimumElapsed) && (
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-background overflow-hidden">
+            <div className="absolute inset-x-10 top-1/2 h-56 -translate-y-1/2 rounded-full bg-accent/70 blur-3xl" />
+            <div className="relative flex flex-col items-center animate-in fade-in zoom-in-95 duration-500">
+              <BrandMark className="w-24 h-24 rounded-[1.7rem] shadow-xl shadow-primary/20" />
+              <BrandWordmark className="mt-6 text-[1.8rem] text-foreground" />
+              <p className="mt-3 text-sm text-muted-foreground">
+                Split together. Settle simply.
+              </p>
+              <div className="mt-8 flex items-center gap-1.5" aria-label="Loading">
+                <span className="size-2 rounded-full bg-primary/35 animate-pulse" />
+                <span className="size-2 rounded-full bg-primary/65 animate-pulse [animation-delay:150ms]" />
+                <span className="size-2 rounded-full bg-primary animate-pulse [animation-delay:300ms]" />
+              </div>
             </div>
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
-        {authState === "unauthenticated" && (
+        {splashMinimumElapsed && authState === "unauthenticated" && (
           <LoginScreen
             onProfileNeeded={() => {}}
             onGoogleSignIn={handleGoogleSignIn}
           />
         )}
 
-        {authState === "needs_profile" && session && (
+        {splashMinimumElapsed && authState === "needs_profile" && session && (
           <CompleteProfileScreen
             email={session.email}
             onComplete={handleCompleteProfile}
           />
         )}
 
-        {authState === "authenticated" && currentUser && (
+        {splashMinimumElapsed && authState === "authenticated" && currentUser && (
           <>
             {screen === "profile" && (
               <ProfileScreen

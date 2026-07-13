@@ -1,5 +1,9 @@
-const CACHE_NAME = "bayadtayoopo-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE_NAME = "bayadtayoopo-v2";
+const APP_SHELL = [
+  "/",
+  "/manifest.webmanifest?v=2",
+  "/icons/icon.svg?v=2",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

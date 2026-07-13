@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Wallet, ArrowRight, Mail, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Mail, Loader2, CheckCircle2 } from "lucide-react";
 import { sendMagicLink } from "../../lib/firebaseRest";
 import type { AuthUser } from "../../lib/firebaseRest";
+import { BrandMark, BrandWordmark } from "./Brand";
 
 interface Props {
   onProfileNeeded: () => void; // unused but kept for API compat
@@ -53,13 +54,10 @@ export function LoginScreen({ onGoogleSignIn }: Props) {
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
-        <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-lg"
-          style={{ backgroundColor: "var(--primary)" }}
-        >
-          <Wallet size={36} className="text-white" />
-        </div>
-        <h1 className="text-foreground mb-2">BayadTayoOpo</h1>
+        <BrandMark className="w-20 h-20 mb-6 shadow-lg rounded-[1.4rem]" />
+        <h1 className="text-foreground mb-2">
+          <BrandWordmark className="text-[1.75rem]" />
+        </h1>
         <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">
           Split expenses with friends and groups — no math, no drama.
         </p>
@@ -197,12 +195,7 @@ export function CompleteProfileScreen({
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
-        <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-lg"
-          style={{ backgroundColor: "var(--primary)" }}
-        >
-          <Wallet size={36} className="text-white" />
-        </div>
+        <BrandMark className="w-20 h-20 mb-6 shadow-lg rounded-[1.4rem]" />
         <h1 className="text-foreground mb-2">Almost there!</h1>
         <p className="text-sm text-muted-foreground">Signed in as {email}</p>
       </div>
