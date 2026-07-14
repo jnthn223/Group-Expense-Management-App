@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, LogOut, Edit2, Check, X, Mail, Shield, ChevronRight, Shuffle } from "lucide-react";
+import { ArrowLeft, LogOut, Edit2, Check, X, Mail, Shield, ChevronRight, Shuffle, Coffee, ExternalLink } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import type { CurrentUser } from "./types";
 import { MEMBER_COLORS } from "./utils";
@@ -15,6 +15,7 @@ interface Props {
 }
 
 export function ProfileScreen({ user, groupCount, expenseCount, onBack, onLogout, onUpdateUser }: Props) {
+  const kofiUrl = import.meta.env.VITE_KOFI_URL?.trim();
   const [editName, setEditName] = useState(false);
   const [nameInput, setNameInput] = useState(user.name);
   const [colorInput, setColorInput] = useState(user.color);
@@ -177,6 +178,35 @@ export function ProfileScreen({ user, groupCount, expenseCount, onBack, onLogout
             </div>
           </div>
         ))}
+
+        {/* Optional support */}
+        <div>
+          <p className="text-xs text-muted-foreground font-medium mb-2 px-1">Support</p>
+          <div className="bg-card rounded-2xl border border-border p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                <Coffee size={15} className="text-accent-foreground" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">Support BayadTayoOpo</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  BayadTayoOpo is free to use. Optional support helps cover hosting and ongoing development.
+                </p>
+              </div>
+            </div>
+            {kofiUrl && (
+              <a
+                href={kofiUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/80 active:scale-[0.98]"
+              >
+                Support on Ko-fi
+                <ExternalLink size={14} aria-hidden="true" />
+              </a>
+            )}
+          </div>
+        </div>
 
         {/* Logout */}
         <div>
