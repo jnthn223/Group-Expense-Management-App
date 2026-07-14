@@ -1,6 +1,18 @@
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, Mail, Loader2, CheckCircle2, Send, UserPlus, Merge, Trash2, Share2, MessageSquareText, ShieldCheck } from "lucide-react";
+import {
+  X,
+  Mail,
+  Loader2,
+  CheckCircle2,
+  Send,
+  UserPlus,
+  Merge,
+  Trash2,
+  Share2,
+  MessageSquareText,
+  ShieldCheck,
+} from "lucide-react";
 import { sendMagicLink } from "../../lib/firebaseRest";
 import type { Group } from "./types";
 import { UserAvatar } from "./UserAvatar";
@@ -13,7 +25,11 @@ interface Props {
   onAddPending?: (name: string) => string | undefined;
   onMergePending?: (pendingId: string, joinedId: string) => void;
   onDeletePending?: (memberId: string) => string | undefined;
-  onSetMemberAdmin?: (memberId: string, makeAdmin: boolean) => string | undefined;
+  onRemoveMember?: (memberId: string) => string | undefined;
+  onSetMemberAdmin?: (
+    memberId: string,
+    makeAdmin: boolean,
+  ) => string | undefined;
 }
 
 type Step = "form" | "sent";
@@ -26,6 +42,7 @@ export function InviteModal({
   onAddPending,
   onMergePending,
   onDeletePending,
+  onRemoveMember,
   onSetMemberAdmin,
 }: Props) {
   const [email, setEmail] = useState("");
@@ -39,11 +56,17 @@ export function InviteModal({
   const [shareMessage, setShareMessage] = useState("");
   const [shareError, setShareError] = useState("");
   const [mergeTargets, setMergeTargets] = useState<Record<string, string>>({});
-  const pendingMembers = group.members.filter((member) => !member.uid);
-  const joinedMembers = group.members.filter((member) => !!member.uid);
   const ownerId = group.adminId ?? group.members[0]?.id;
   const isOwner = (member: Group["members"][number]) =>
     member.id === ownerId || member.uid === ownerId;
+  // Legacy groups did not persist the creator's uid. The owner is still a
+  // joined member because their member id is their authentication uid.
+  const pendingMembers = group.members.filter(
+    (member) => !member.uid && !isOwner(member),
+  );
+  const joinedMembers = group.members.filter(
+    (member) => !!member.uid || isOwner(member),
+  );
   const memberIsAdmin = (member: Group["members"][number]) =>
     isOwner(member) ||
     (group.adminIds ?? []).some(
@@ -53,6 +76,15 @@ export function InviteModal({
   function setMemberAdmin(memberId: string, makeAdmin: boolean) {
     const adminError = onSetMemberAdmin?.(memberId, makeAdmin);
     if (adminError) setPendingError(adminError);
+    else setPendingError("");
+  }
+
+  function removeMember(memberId: string, memberName: string) {
+    if (!window.confirm(`Remove ${memberName} from this group? Their past expense records will be kept.`)) {
+      return;
+    }
+    const removeError = onRemoveMember?.(memberId);
+    if (removeError) setPendingError(removeError);
     else setPendingError("");
   }
 
@@ -95,7 +127,10 @@ export function InviteModal({
   function preparePendingInvites() {
     const message = pendingMembers
       .filter((member) => member.claimCode)
-      .map((member) => `${member.name} click here: ${personalJoinUrl(member.id, member.claimCode!)}`)
+      .map(
+        (member) =>
+          `${member.name} click here: ${personalJoinUrl(member.id, member.claimCode!)}`,
+      )
       .join("\n");
 
     setShareMessage(message);
@@ -105,7 +140,9 @@ export function InviteModal({
 
   async function sharePendingInvites() {
     if (!navigator.share) {
-      setShareError("Native sharing is not available in this browser. Open BayadTayoOpo on a supported mobile browser to share this message.");
+      setShareError(
+        "Native sharing is not available in this browser. Open BayadTayoOpo on a supported mobile browser to share this message.",
+      );
       return;
     }
 
@@ -130,8 +167,12 @@ export function InviteModal({
     setError("");
     setLoading(true);
 
-    // continueUrl encodes only the groupId — Firestore is the source of truth
-    const continueUrl = `${window.location.origin}${window.location.pathname}?joinGroupId=${group.id}`;
+    const continueUrlValue = new URL(
+      window.location.pathname,
+      window.location.origin,
+    );
+    continueUrlValue.searchParams.set("joinGroupId", group.id);
+    const continueUrl = continueUrlValue.toString();
 
     try {
       await sendMagicLink(trimmed, continueUrl);
@@ -158,7 +199,7 @@ export function InviteModal({
           <div className="w-10 h-1 bg-border rounded-full mx-auto mt-4 mb-5" />
           <div className="flex items-center justify-between px-5 mb-5">
             <Dialog.Title className="text-lg font-semibold text-foreground">
-              Invite to {group.name}
+              Manage members
             </Dialog.Title>
             <button
               onClick={handleClose}
@@ -175,44 +216,78 @@ export function InviteModal({
                   <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-3">
                     <div className="space-y-2 pb-3 border-b border-border">
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Admin access</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          Current members
+                        </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Only people who joined this group can be promoted. The owner cannot be demoted.
+                          Manage roles or remove members from {group.name}. The
+                          owner cannot be removed or demoted.
                         </p>
                       </div>
                       {joinedMembers.map((member) => {
                         const owner = isOwner(member);
                         const admin = memberIsAdmin(member);
                         return (
-                          <div key={member.id} className="flex items-center gap-2 rounded-xl bg-card border border-border p-2.5">
-                            <UserAvatar name={member.name} color={member.color} seed={member.avatarSeed} className="w-8 h-8 rounded-full" />
+                          <div
+                            key={member.id}
+                            className="flex items-center gap-2 rounded-xl bg-card border border-border p-2.5"
+                          >
+                            <UserAvatar
+                              name={member.name}
+                              color={member.color}
+                              seed={member.avatarSeed}
+                              className="w-8 h-8 rounded-full"
+                            />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{member.name}</p>
+                              <p className="text-sm font-medium truncate">
+                                {member.name}
+                              </p>
                               <p className="text-[11px] text-muted-foreground">
-                                {owner ? "Group owner" : admin ? "Co-admin" : "Member"}
+                                {owner
+                                  ? "Group owner"
+                                  : admin
+                                    ? "Co-admin"
+                                    : "Member"}
                               </p>
                             </div>
                             {!owner && (
-                              <button
-                                type="button"
-                                onClick={() => setMemberAdmin(member.id, !admin)}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-semibold ${
-                                  admin
-                                    ? "bg-muted text-muted-foreground"
-                                    : "bg-primary text-primary-foreground"
-                                }`}
-                              >
-                                <ShieldCheck size={14} />
-                                {admin ? "Remove admin" : "Make admin"}
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setMemberAdmin(member.id, !admin)
+                                  }
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-semibold ${
+                                    admin
+                                      ? "bg-muted text-muted-foreground"
+                                      : "bg-primary text-primary-foreground"
+                                  }`}
+                                >
+                                  <ShieldCheck size={14} />
+                                  {admin ? "Remove admin" : "Make admin"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeMember(member.id, member.name)}
+                                  className="p-2 rounded-lg bg-destructive/10 text-destructive"
+                                  title={`Remove ${member.name} from group`}
+                                  aria-label={`Remove ${member.name} from group`}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
                             )}
                           </div>
                         );
                       })}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-foreground">Add now, let them join later</p>
-                      <p className="text-xs text-muted-foreground mt-1">Pending members can be included in expenses immediately.</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        Add now, let them join later
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Pending members can be included in expenses immediately.
+                      </p>
                     </div>
                     <div className="flex gap-2">
                       <input
@@ -221,25 +296,45 @@ export function InviteModal({
                           setPendingName(event.target.value);
                           setPendingError("");
                         }}
-                        onKeyDown={(event) => event.key === "Enter" && addPendingMember()}
+                        onKeyDown={(event) =>
+                          event.key === "Enter" && addPendingMember()
+                        }
                         placeholder="Member name"
                         className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-input-background border border-border text-sm outline-none focus:border-primary"
                       />
-                      <button onClick={addPendingMember} className="px-3 rounded-xl bg-primary text-primary-foreground" title="Add pending member">
+                      <button
+                        onClick={addPendingMember}
+                        className="px-3 rounded-xl bg-primary text-primary-foreground"
+                        title="Add pending member"
+                      >
                         <UserPlus size={17} />
                       </button>
                     </div>
-                    {pendingError && <p className="text-xs text-destructive">{pendingError}</p>}
+                    {pendingError && (
+                      <p className="text-xs text-destructive">{pendingError}</p>
+                    )}
 
                     {pendingMembers.length > 0 && (
                       <div className="space-y-2 pt-1">
                         {pendingMembers.map((member) => (
-                          <div key={member.id} className="rounded-xl bg-card border border-border p-3 space-y-2">
+                          <div
+                            key={member.id}
+                            className="rounded-xl bg-card border border-border p-3 space-y-2"
+                          >
                             <div className="flex items-center gap-2">
-                              <UserAvatar name={member.name} color={member.color} seed={member.avatarSeed} className="w-8 h-8 rounded-full" />
+                              <UserAvatar
+                                name={member.name}
+                                color={member.color}
+                                seed={member.avatarSeed}
+                                className="w-8 h-8 rounded-full"
+                              />
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{member.name}</p>
-                                <p className="text-[11px] text-amber-700">Pending</p>
+                                <p className="text-sm font-medium truncate">
+                                  {member.name}
+                                </p>
+                                <p className="text-[11px] text-amber-700">
+                                  Pending
+                                </p>
                               </div>
                               <button
                                 onClick={() => {
@@ -256,17 +351,31 @@ export function InviteModal({
                               <div className="flex gap-2">
                                 <select
                                   value={mergeTargets[member.id] ?? ""}
-                                  onChange={(event) => setMergeTargets((value) => ({ ...value, [member.id]: event.target.value }))}
+                                  onChange={(event) =>
+                                    setMergeTargets((value) => ({
+                                      ...value,
+                                      [member.id]: event.target.value,
+                                    }))
+                                  }
                                   className="flex-1 min-w-0 px-2 py-2 rounded-lg bg-input-background border border-border text-xs"
                                 >
-                                  <option value="">Merge into joined member…</option>
+                                  <option value="">
+                                    Merge into joined member…
+                                  </option>
                                   {joinedMembers.map((joined) => (
-                                    <option key={joined.id} value={joined.id}>{joined.name}</option>
+                                    <option key={joined.id} value={joined.id}>
+                                      {joined.name}
+                                    </option>
                                   ))}
                                 </select>
                                 <button
                                   disabled={!mergeTargets[member.id]}
-                                  onClick={() => onMergePending?.(member.id, mergeTargets[member.id])}
+                                  onClick={() =>
+                                    onMergePending?.(
+                                      member.id,
+                                      mergeTargets[member.id],
+                                    )
+                                  }
                                   className="p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-40"
                                   title="Merge members"
                                 >
@@ -279,11 +388,19 @@ export function InviteModal({
 
                         <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-3">
                           <div className="flex items-start gap-2.5">
-                            <MessageSquareText size={17} className="text-primary mt-0.5 shrink-0" />
+                            <MessageSquareText
+                              size={17}
+                              className="text-primary mt-0.5 shrink-0"
+                            />
                             <div>
-                              <p className="text-sm font-medium text-foreground">Invite your placeholder members</p>
+                              <p className="text-sm font-medium text-foreground">
+                                Invite your placeholder members
+                              </p>
                               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                                Placeholder members let you record expenses before someone joins. Each person below has a unique link that connects them to their existing expenses.
+                                Placeholder members let you record expenses
+                                before someone joins. Each person below has a
+                                unique link that connects them to their existing
+                                expenses.
                               </p>
                             </div>
                           </div>
@@ -299,17 +416,32 @@ export function InviteModal({
                         {showSharePreview && (
                           <div className="rounded-xl border border-border bg-card p-3 space-y-3">
                             <div>
-                              <p className="text-sm font-semibold text-foreground">Message preview</p>
-                              <p className="text-xs text-muted-foreground mt-1">This exact message will be sent to the app you choose.</p>
+                              <p className="text-sm font-semibold text-foreground">
+                                Message preview
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                This exact message will be sent to the app you
+                                choose.
+                              </p>
                             </div>
                             <textarea
                               value={shareMessage}
                               readOnly
-                              rows={Math.min(Math.max(pendingMembers.length * 2, 4), 10)}
+                              rows={Math.min(
+                                Math.max(pendingMembers.length * 2, 4),
+                                10,
+                              )}
                               className="w-full resize-none rounded-xl border border-border bg-input-background p-3 text-xs leading-relaxed text-foreground outline-none"
                               aria-label="Pending member invite message preview"
                             />
-                            {shareError && <p className="text-xs text-destructive" role="alert">{shareError}</p>}
+                            {shareError && (
+                              <p
+                                className="text-xs text-destructive"
+                                role="alert"
+                              >
+                                {shareError}
+                              </p>
+                            )}
                             <button
                               onClick={sharePendingInvites}
                               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.98] transition-transform"
@@ -324,10 +456,15 @@ export function InviteModal({
                   </div>
                 )}
 
-                <p className="text-sm text-muted-foreground">
-                  We'll email them a magic link. When they click it, they'll be
-                  signed in and automatically added to this group.
-                </p>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Invite by email
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    We'll email them a magic link. When they click it, they'll
+                    be signed in and automatically added to this group.
+                  </p>
+                </div>
 
                 <div>
                   <label className="block text-sm text-muted-foreground mb-1.5">
@@ -344,7 +481,6 @@ export function InviteModal({
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                      autoFocus
                       className="w-full pl-10 pr-4 py-3.5 rounded-xl bg-input-background border border-border text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>

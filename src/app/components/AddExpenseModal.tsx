@@ -34,6 +34,14 @@ export function AddExpenseModal({
   editExpense,
   isAdmin,
 }: Props) {
+  const historicalMemberIds = new Set([
+    ...(editExpense?.splits.map((split) => split.memberId) ?? []),
+    ...(editExpense ? [editExpense.paidBy] : []),
+  ]);
+  const historicalMembers = (group.formerMembers ?? []).filter((member) =>
+    historicalMemberIds.has(member.id),
+  );
+  const availableMembers = [...group.members, ...historicalMembers];
   const currentMember = group.members.find(
     (member) => member.id === currentUser.id || member.uid === currentUser.id,
   );
@@ -84,7 +92,7 @@ export function AddExpenseModal({
   }, [open, editExpense, isAdmin, defaultPayerId]);
 
   const totalAmount = parseFloat(amount) || 0;
-  const includedMembers = group.members.filter((member) =>
+  const includedMembers = availableMembers.filter((member) =>
     includedMemberIds.includes(member.id),
   );
   const numericOverrides = Object.fromEntries(
@@ -308,9 +316,10 @@ export function AddExpenseModal({
                       }}
                       className="w-full px-4 py-3 pr-10 rounded-xl bg-input-background border border-border text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
                     >
-                      {group.members.map((member) => (
+                      {availableMembers.map((member) => (
                         <option key={member.id} value={member.id}>
                           {displayMemberName(member.id, member.name)}
+                          {member.removedAt ? " (former member)" : ""}
                         </option>
                       ))}
                     </select>
@@ -366,7 +375,7 @@ export function AddExpenseModal({
                   <span className="text-sm text-muted-foreground">Included members</span>
                   <span className="text-xs text-muted-foreground">Tap to include or exclude</span>
                 </div>
-                {group.members.map((m) => (
+                {availableMembers.map((m) => (
                   <button
                     type="button"
                     key={m.id}
@@ -412,7 +421,7 @@ export function AddExpenseModal({
                     Distribute equally
                   </button>
                 </div>
-                {group.members.map((m) => (
+                {availableMembers.map((m) => (
                   <div
                     key={m.id}
                     className={`flex items-center gap-2 rounded-xl p-2 border ${

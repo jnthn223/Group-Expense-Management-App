@@ -78,7 +78,8 @@ export function allocateCustomShares(
 
 export function computeBalances(group: Group): Balance[] {
   const balances: Record<string, number> = {};
-  group.members.forEach((m) => (balances[m.id] = 0));
+  const members = [...group.members, ...(group.formerMembers ?? [])];
+  members.forEach((m) => (balances[m.id] = 0));
 
   group.expenses.forEach((exp) => {
     const payerId = getExpensePayerId(exp);
@@ -90,14 +91,14 @@ export function computeBalances(group: Group): Balance[] {
       0,
     );
 
-    balances[payerId] += exp.amount - confirmedPayments;
+    balances[payerId] = (balances[payerId] ?? 0) + exp.amount - confirmedPayments;
     exp.splits.forEach((s) => {
       if (s.memberId !== payerId && s.paymentStatus === "confirmed") return;
-      balances[s.memberId] -= s.amount;
+      balances[s.memberId] = (balances[s.memberId] ?? 0) - s.amount;
     });
   });
 
-  return group.members.map((m) => ({
+  return members.map((m) => ({
     memberId: m.id,
     memberName: m.name,
     net: balances[m.id] ?? 0,
@@ -134,7 +135,31 @@ export function computeSettlements(balances: Balance[]): Settlement[] {
 }
 
 export function getMemberById(group: Group, id: string): Member | undefined {
-  return group.members.find((m) => m.id === id);
+  return [...group.members, ...(group.formerMembers ?? [])].find(
+    (member) => member.id === id,
+  );
+}
+
+export function archiveGroupMember(group: Group, memberId: string): Group {
+  const member = group.members.find((candidate) => candidate.id === memberId);
+  if (!member) return group;
+
+  const identifiers = new Set(
+    [member.id, member.uid].filter((id): id is string => !!id),
+  );
+  return {
+    ...group,
+    members: group.members.filter((candidate) => candidate.id !== memberId),
+    formerMembers: [
+      ...(group.formerMembers ?? []).filter(
+        (candidate) => candidate.id !== memberId,
+      ),
+      { ...member, removedAt: new Date().toISOString() },
+    ],
+    adminIds: (group.adminIds ?? []).filter(
+      (candidate) => !identifiers.has(candidate),
+    ),
+  };
 }
 
 export function getTotalExpenses(group: Group): number {

@@ -135,7 +135,11 @@ export async function loadUserGroups(uid: string): Promise<Group[]> {
 
   return docs
     .map((doc) => (doc ? unpackGroup(doc) : null))
-    .filter((g): g is Group => g !== null);
+    .filter(
+      (group): group is Group =>
+        group !== null &&
+        group.members.some((member) => member.id === uid || member.uid === uid),
+    );
 }
 
 /** Fetch a single group by ID (for join flow). */

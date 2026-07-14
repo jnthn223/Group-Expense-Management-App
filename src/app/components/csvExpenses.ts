@@ -130,7 +130,8 @@ export function parseExpensesCsv(
 }
 
 function expenseToRow(expense: Expense, group: Group): string[] {
-  const paidBy = getMemberName(group.members, expense.paidBy);
+  const historicalMembers = [...group.members, ...(group.formerMembers ?? [])];
+  const paidBy = getMemberName(historicalMembers, expense.paidBy);
   return [
     expense.date,
     expense.description,
@@ -140,7 +141,7 @@ function expenseToRow(expense: Expense, group: Group): string[] {
     paidBy,
     expense.splitType,
     expense.splits
-      .map((split) => `${getMemberName(group.members, split.memberId)}:${split.amount}`)
+      .map((split) => `${getMemberName(historicalMembers, split.memberId)}:${split.amount}`)
       .join(";"),
   ];
 }

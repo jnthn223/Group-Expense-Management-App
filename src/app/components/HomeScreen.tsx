@@ -1,6 +1,9 @@
 import { useState } from "react";
 import {
+  ChevronDown,
   ChevronRight,
+  Coffee,
+  ExternalLink,
   MessageCircle,
   Plus,
   Receipt,
@@ -35,7 +38,9 @@ export function HomeScreen({
   onCreateGroup,
   onOpenProfile,
 }: Props) {
+  const kofiUrl = import.meta.env.VITE_KOFI_URL?.trim();
   const [createOpen, setCreateOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
   const activity = groups
     .flatMap((group) => {
       const expenseItems = group.expenses
@@ -231,47 +236,92 @@ export function HomeScreen({
 
             {activity.length > 0 && (
               <div className="space-y-3">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Recent Activity
-                </p>
-                <div className="space-y-2">
-                  {activity.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => onSelectGroup(item.group)}
-                        className="w-full bg-card rounded-2xl border border-border p-4 flex items-center gap-3 text-left hover:border-primary/40 hover:shadow-sm transition-all active:scale-[0.99]"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shrink-0">
-                          <Icon size={18} className="text-accent-foreground" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-foreground truncate">
-                              {item.group.name}
-                            </p>
-                            <span className="text-xs text-muted-foreground shrink-0">
-                              {formatActivityTime(item.at)}
-                            </span>
+                <button
+                  type="button"
+                  onClick={() => setActivityOpen((open) => !open)}
+                  aria-expanded={activityOpen}
+                  className="w-full flex items-center justify-between rounded-xl px-1 py-1 text-left"
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    Recent Activity
+                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-accent text-accent-foreground text-[10px] leading-5 text-center font-semibold">
+                      {activity.length}
+                    </span>
+                  </span>
+                  <ChevronDown
+                    size={17}
+                    className={`text-muted-foreground transition-transform ${
+                      activityOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {activityOpen && (
+                  <div className="space-y-2">
+                    {activity.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => onSelectGroup(item.group)}
+                          className="w-full bg-card rounded-2xl border border-border p-4 flex items-center gap-3 text-left hover:border-primary/40 hover:shadow-sm transition-all active:scale-[0.99]"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                            <Icon size={18} className="text-accent-foreground" />
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                            {item.detail}
-                          </p>
-                          <p className="text-xs text-foreground mt-1 truncate">
-                            {item.title}
-                          </p>
-                        </div>
-                        <ChevronRight
-                          size={16}
-                          className="text-muted-foreground shrink-0"
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-foreground truncate">
+                                {item.group.name}
+                              </p>
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                {formatActivityTime(item.at)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                              {item.detail}
+                            </p>
+                            <p className="text-xs text-foreground mt-1 truncate">
+                              {item.title}
+                            </p>
+                          </div>
+                          <ChevronRight
+                            size={16}
+                            className="text-muted-foreground shrink-0"
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
+
+            <div className="bg-card rounded-2xl border border-border p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                  <Coffee size={15} className="text-accent-foreground" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">
+                    Support BayadTayoOpo
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Enjoying the app? Optional support helps keep it running and improving.
+                  </p>
+                </div>
+              </div>
+              {kofiUrl && (
+                <a
+                  href={kofiUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/80 active:scale-[0.98]"
+                >
+                  Support on Ko-fi
+                  <ExternalLink size={14} aria-hidden="true" />
+                </a>
+              )}
+            </div>
           </div>
         )}
       </div>

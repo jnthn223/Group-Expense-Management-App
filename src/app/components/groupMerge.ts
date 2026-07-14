@@ -105,7 +105,15 @@ export function mergeGroupChanges(
     currency:
       base.currency !== changed.currency ? changed.currency : latest.currency,
     adminId: base.adminId !== changed.adminId ? changed.adminId : latest.adminId,
+    adminIds: !sameValue(base.adminIds, changed.adminIds)
+      ? changed.adminIds
+      : latest.adminIds,
     members: mergeById(base.members, changed.members, latest.members),
+    formerMembers: mergeById(
+      base.formerMembers,
+      changed.formerMembers,
+      latest.formerMembers,
+    ),
     expenses: mergeById(base.expenses, changed.expenses, latest.expenses),
     deletedExpenses: mergeAppendOnly(
       base.deletedExpenses,

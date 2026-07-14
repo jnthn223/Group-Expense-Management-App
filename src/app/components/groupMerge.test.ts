@@ -77,6 +77,18 @@ describe("group merge business logic", () => {
       .toEqual(["expense-2", "expense-3"]);
   });
 
+  it("persists admin promotions and demotions during sync", () => {
+    const base = group({ adminIds: ["alice"] });
+    const promoted = group({ adminIds: ["alice", "bob"] });
+
+    expect(
+      mergeGroupChanges(base, promoted, base).adminIds,
+    ).toEqual(["alice", "bob"]);
+    expect(
+      mergeGroupChanges(promoted, base, promoted).adminIds,
+    ).toEqual(["alice"]);
+  });
+
   it("appends local messages and deleted expense records without dropping latest records", () => {
     const base = group({
       messages: [message("message-1", 1)],

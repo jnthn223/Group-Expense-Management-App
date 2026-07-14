@@ -30,7 +30,11 @@ import { MEMBER_COLORS } from "./components/utils";
 import { compactGroupHistory, mergeGroupChanges } from "./components/groupMerge";
 import { HomeScreen } from "./components/HomeScreen";
 import { GroupScreen } from "./components/GroupScreen";
-import { LoginScreen, CompleteProfileScreen } from "./components/LoginScreen";
+import {
+  LoginScreen,
+  CompleteProfileScreen,
+  MagicLinkEmailScreen,
+} from "./components/LoginScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
 import { BrandMark, BrandWordmark } from "./components/Brand";
 import { auth } from "../lib/firebase";
@@ -41,6 +45,7 @@ import { signOut } from "firebase/auth";
 type AuthState =
   | "loading"
   | "unauthenticated"
+  | "needs_link_email"
   | "needs_profile"
   | "authenticated";
 type Screen = "home" | "group" | "profile";
@@ -70,6 +75,7 @@ export default function App() {
     type: "success" | "error";
   } | null>(null);
   const [groupsLoading, setGroupsLoading] = useState(false);
+  const [linkEmailError, setLinkEmailError] = useState("");
   const [splashMinimumElapsed, setSplashMinimumElapsed] = useState(false);
   const syncRef = useRef<{
     unsubscribe?: () => void;
@@ -106,13 +112,9 @@ export default function App() {
 
       // 1. Magic link callback?
       if (isMagicLink()) {
-        let email = (localStorage.getItem("emailForSignIn") ?? "").trim();
-        let usedStoredEmail = !!email;
+        const email = (localStorage.getItem("emailForSignIn") ?? "").trim();
         if (!email) {
-          email = (window.prompt("Enter the email address this sign-in link was sent to:") ?? "").trim();
-        }
-        if (!email) {
-          setAuthState("unauthenticated");
+          setAuthState("needs_link_email");
           return;
         }
 
@@ -130,23 +132,16 @@ export default function App() {
               message.includes("email address does not match") ||
               code === "auth/invalid-email";
 
-            if (!usedStoredEmail || !emailMismatch) throw error;
+            if (!emailMismatch) throw error;
 
             // A prior sign-in attempt can leave a different address in this
-            // browser. Discard it and let the recipient retry the same link.
+            // browser. Discard it and show the secure in-app confirmation form.
             localStorage.removeItem("emailForSignIn");
-            const correctedEmail = (
-              window.prompt(
-                "This link was sent to a different email address. Enter the exact recipient email:",
-              ) ?? ""
-            ).trim();
-            if (!correctedEmail) {
-              setAuthState("unauthenticated");
-              return;
-            }
-            email = correctedEmail;
-            usedStoredEmail = false;
-            user = await completeMagicLink(email);
+            setLinkEmailError(
+              "That email does not match this magic link. Enter the address that received it.",
+            );
+            setAuthState("needs_link_email");
+            return;
           }
           const newSession = saveSession(user);
           setSession(newSession);
@@ -268,6 +263,17 @@ export default function App() {
 
     const applyFreshGroup = (fresh: Group | null) => {
       if (!fresh) return;
+      if (
+        session &&
+        !fresh.members.some(
+          (member) => member.id === session.uid || member.uid === session.uid,
+        )
+      ) {
+        setGroups((prev) => prev.filter((group) => group.id !== fresh.id));
+        setSelectedGroup(null);
+        setScreen("home");
+        return;
+      }
       setSelectedGroup(fresh);
       setGroups((prev) => prev.map((g) => (g.id === fresh.id ? fresh : g)));
     };
@@ -518,7 +524,11 @@ export default function App() {
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="size-full flex justify-center bg-background sm:bg-muted overflow-hidden">
-      <div className="w-full h-full sm:max-w-sm relative overflow-hidden bg-background flex flex-col sm:shadow-2xl">
+      <div
+        className={`w-full h-full relative overflow-hidden bg-background flex flex-col sm:shadow-2xl transition-[max-width] duration-300 ${
+          authState === "unauthenticated" ? "sm:max-w-6xl" : "sm:max-w-sm"
+        }`}
+      >
         {/* Banner */}
         {banner && (
           <div
@@ -559,6 +569,16 @@ export default function App() {
           <LoginScreen
             onProfileNeeded={() => {}}
             onGoogleSignIn={handleGoogleSignIn}
+          />
+        )}
+
+        {splashMinimumElapsed && authState === "needs_link_email" && (
+          <MagicLinkEmailScreen
+            error={linkEmailError}
+            onContinue={(email) => {
+              localStorage.setItem("emailForSignIn", email);
+              window.location.reload();
+            }}
           />
         )}
 

@@ -179,3 +179,26 @@
     line-height: 1.5;
   }
 }
+
+/* Prevent iOS from enlarging the viewport when a compact modal field receives focus. */
+@media (max-width: 767px) {
+  [role="dialog"] {
+    touch-action: pan-x pan-y;
+  }
+
+  [role="dialog"] :is(input, select, textarea) {
+    font-size: 16px;
+  }
+}
+
+/* Keep desktop landing-page scrolling without the distracting browser gutter. */
+@media (min-width: 1024px) {
+  .landing-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .landing-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}

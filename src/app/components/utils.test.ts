@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Group } from "./types";
 import {
   allocateCustomShares,
+  archiveGroupMember,
   computeBalances,
   computeSettlements,
   formatCurrency,
@@ -157,6 +158,23 @@ describe("expense business logic", () => {
     expect(getMemberById(group, "bob")?.name).toBe("Bob");
     expect(getMemberById(group, "missing")).toBeUndefined();
     expect(getTotalExpenses(group)).toBe(150);
+  });
+
+  it("archives a removed member while keeping historical expense identity and balances", () => {
+    const archived = archiveGroupMember(
+      { ...group, adminIds: ["alice", "bob"] },
+      "bob",
+    );
+
+    expect(archived.members.map((member) => member.id)).toEqual([
+      "alice",
+      "carol",
+    ]);
+    expect(archived.adminIds).toEqual(["alice"]);
+    expect(getMemberById(archived, "bob")?.name).toBe("Bob");
+    expect(archived.expenses).toEqual(group.expenses);
+    expect(computeBalances(archived).find((balance) => balance.memberId === "bob"))
+      .toMatchObject({ memberName: "Bob", net: -10 });
   });
 
   it("summarizes only the current member's unconfirmed repayments", () => {

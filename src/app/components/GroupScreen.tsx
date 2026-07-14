@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
   Download,
   Clock3,
+  Coffee,
   FileSpreadsheet,
   MessageCircle,
   Plus,
@@ -14,9 +15,9 @@ import {
   BarChart2,
   Trash2,
   Edit2,
+  ExternalLink,
   MoreVertical,
   Upload,
-  UserPlus,
   Shuffle,
   X,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import {
   savePaymentImage,
 } from "../../lib/paymentImageService";
 import {
+  archiveGroupMember,
   computeBalances,
   computeSettlements,
   formatCurrency,
@@ -68,7 +70,12 @@ export function GroupScreen({
   onUpdate,
   onDelete,
 }: Props) {
+  const kofiUrl = import.meta.env.VITE_KOFI_URL?.trim();
+  const chatReadKey = `bayadtayoopo:chat-read:${currentUser.id}:${group.id}`;
   const [tab, setTab] = useState<Tab>("expenses");
+  const [lastChatReadAt, setLastChatReadAt] = useState(
+    () => localStorage.getItem(chatReadKey) ?? "",
+  );
   const [addOpen, setAddOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -119,6 +126,10 @@ export function GroupScreen({
   } | null>(null);
 
   const balances = computeBalances(group);
+  const activeMemberIds = new Set(group.members.map((member) => member.id));
+  const activeBalances = balances.filter((balance) =>
+    activeMemberIds.has(balance.memberId),
+  );
   const settlements = computeSettlements(balances);
   const total = getTotalExpenses(group);
   const messages = [...(group.messages ?? [])].sort((a, b) =>
@@ -149,6 +160,51 @@ export function GroupScreen({
       )
       .map((split) => ({ expense, split })),
   );
+  const relevantPaymentMemberIds = new Set<string>();
+  if (currentMember) {
+    paymentItems.forEach(({ expense, split }) => {
+      const payerId = getExpensePayerId(expense);
+      if (
+        split.memberId === currentMember.id &&
+        activeMemberIds.has(payerId)
+      ) {
+        relevantPaymentMemberIds.add(payerId);
+      } else if (
+        payerId === currentMember.id &&
+        activeMemberIds.has(split.memberId)
+      ) {
+        relevantPaymentMemberIds.add(split.memberId);
+      }
+    });
+  }
+  const outstandingMemberCount = relevantPaymentMemberIds.size;
+  const unreadChatCount = messages.filter(
+    (message) =>
+      message.memberId !== currentMember?.id &&
+      (!lastChatReadAt || message.createdAt > lastChatReadAt),
+  ).length;
+
+  function markChatRead() {
+    const latestMessageAt = messages.at(-1)?.createdAt ?? "";
+    const readAt = latestMessageAt > new Date().toISOString()
+      ? latestMessageAt
+      : new Date().toISOString();
+    localStorage.setItem(chatReadKey, readAt);
+    setLastChatReadAt(readAt);
+  }
+
+  function handleTabChange(nextTab: Tab) {
+    setTab(nextTab);
+    if (nextTab === "chat") markChatRead();
+  }
+
+  useEffect(() => {
+    setLastChatReadAt(localStorage.getItem(chatReadKey) ?? "");
+  }, [chatReadKey]);
+
+  useEffect(() => {
+    if (tab === "chat") markChatRead();
+  }, [tab, messages.at(-1)?.id, chatReadKey]);
 
   function handleAddExpense(expense: Expense) {
     const updated = { ...group };
@@ -489,6 +545,19 @@ export function GroupScreen({
     return undefined;
   }
 
+  function handleRemoveMember(memberId: string): string | undefined {
+    if (!isAdmin) return "Only a group admin can remove members";
+    const member = group.members.find((candidate) => candidate.id === memberId);
+    if (!member) return "Member not found";
+    if (member.id === currentMember?.id) return "You cannot remove yourself";
+    if (member.id === adminId || member.uid === adminId) {
+      return "The group owner cannot be removed";
+    }
+
+    onUpdate(archiveGroupMember(group, memberId));
+    return undefined;
+  }
+
   function handleSetMemberAdmin(memberId: string, makeAdmin: boolean): string | undefined {
     if (!isAdmin) return "Only a group admin can manage admin access";
     const member = group.members.find((candidate) => candidate.id === memberId);
@@ -631,9 +700,10 @@ export function GroupScreen({
             <button
               onClick={() => setInviteOpen(true)}
               className="p-2 rounded-full hover:bg-muted transition-colors"
-              title="Invite member"
+              title="Manage members"
+              aria-label="Manage members"
             >
-              <UserPlus size={19} className="text-foreground" />
+              <Users size={19} className="text-foreground" />
             </button>
             <button
               onClick={() => setQrOpen(true)}
@@ -729,22 +799,30 @@ export function GroupScreen({
       <div className="flex border-b border-border bg-card">
         {(
           [
-            { id: "expenses", label: "Expenses", icon: Receipt },
-            { id: "balances", label: "Balances", icon: BarChart2 },
-            { id: "settle", label: "Settle Up", icon: Users },
-            { id: "chat", label: "Chat", icon: MessageCircle },
-          ] as { id: Tab; label: string; icon: any }[]
-        ).map(({ id, label, icon: Icon }) => (
+            { id: "expenses", label: "Expenses", icon: Receipt, badge: 0, badgeLabel: "" },
+            { id: "balances", label: "Balances", icon: BarChart2, badge: 0, badgeLabel: "" },
+            { id: "settle", label: "Settle Up", icon: Users, badge: outstandingMemberCount, badgeLabel: "relevant members with outstanding payments" },
+            { id: "chat", label: "Chat", icon: MessageCircle, badge: unreadChatCount, badgeLabel: "unread messages" },
+          ] as { id: Tab; label: string; icon: any; badge: number; badgeLabel: string }[]
+        ).map(({ id, label, icon: Icon, badge, badgeLabel }) => (
           <button
             key={id}
-            onClick={() => setTab(id)}
+            onClick={() => handleTabChange(id)}
+            aria-label={`${label}${badge ? `, ${badge} ${badgeLabel}` : ""}`}
             className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium border-b-2 transition-all ${
               tab === id
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground"
             }`}
           >
-            <Icon size={16} />
+            <span className="relative">
+              <Icon size={16} />
+              {badge > 0 && (
+                <span className="absolute -right-3 -top-2 min-w-4 h-4 px-1 rounded-full bg-destructive text-white text-[9px] leading-4 text-center font-bold shadow-sm">
+                  {badge > 99 ? "99+" : badge}
+                </span>
+              )}
+            </span>
             {label}
           </button>
         ))}
@@ -856,13 +934,13 @@ export function GroupScreen({
 
         {tab === "balances" && (
           <div className="p-4 space-y-3">
-            {balances.length === 0 ? (
+            {activeBalances.length === 0 ? (
               <p className="text-center text-muted-foreground py-20">
                 No members yet
               </p>
             ) : (
               <>
-                {balances.map((b) => (
+                {activeBalances.map((b) => (
                   <div
                     key={b.memberId}
                     className="bg-card rounded-2xl border border-border p-4 flex items-center gap-4"
@@ -900,10 +978,31 @@ export function GroupScreen({
                     </div>
                   </div>
                 ))}
-                <div className="bg-accent rounded-2xl p-4">
-                  <p className="text-xs text-muted-foreground">
-                    Positive = others owe you · Negative = you owe others
-                  </p>
+                <div className="bg-card rounded-2xl border border-border p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                      <Coffee size={15} className="text-accent-foreground" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">
+                        Support BayadTayoOpo
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        Optional support helps cover hosting and ongoing development.
+                      </p>
+                    </div>
+                  </div>
+                  {kofiUrl && (
+                    <a
+                      href={kofiUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/80 active:scale-[0.98]"
+                    >
+                      Support on Ko-fi
+                      <ExternalLink size={14} aria-hidden="true" />
+                    </a>
+                  )}
                 </div>
               </>
             )}
@@ -1784,6 +1883,7 @@ export function GroupScreen({
         onAddPending={handleAddPendingMember}
         onMergePending={handleMergePendingMember}
         onDeletePending={handleDeletePendingMember}
+        onRemoveMember={handleRemoveMember}
         onSetMemberAdmin={handleSetMemberAdmin}
       />
     </div>

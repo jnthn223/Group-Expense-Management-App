@@ -50,6 +50,7 @@ export function CreateGroupModal({
       members: [
         {
           id: currentUser.id,
+          uid: currentUser.id,
           name: currentUser.name,
           color: currentUser.color,
           avatarSeed: currentUser.avatarSeed,

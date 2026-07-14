@@ -7,6 +7,7 @@ export interface Member {
   claimCode?: string;
   claimedFromPlaceholder?: boolean;
   paymentInstructions?: PaymentInstructions;
+  removedAt?: string;
 }
 
 export interface PaymentInstructions {
@@ -73,6 +74,8 @@ export interface Group {
   adminId?: string;
   adminIds?: string[];
   members: Member[];
+  /** Members removed from the active roster, retained for historical records. */
+  formerMembers?: Member[];
   expenses: Expense[];
   deletedExpenses?: DeletedExpense[];
   messages?: ChatMessage[];
